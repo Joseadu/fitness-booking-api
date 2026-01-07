@@ -26,3 +26,17 @@ Este archivo se actualizará automáticamente con el progreso del desarrollo.
 - [x] **Verificación Final**
     - [x] Conexión DB verificada (Transaction Pooler)
     - [x] Endpoint `/health` respondiendo OK
+
+## Fase 2: Migración Backend (En Progreso)
+- [x] **Fase 1: Data Model (Entidades)**
+    - [x] Crear Entidad `Box`
+    - [x] Crear Entidad `Profile` (Athlete)
+    - [x] Crear Entidad `Discipline`
+    - [x] Crear Entidad `Schedule`
+    - [x] Crear Entidad `Booking`
+    - [x] Crear Entidad `BoxMembership`
+    - [x] Crear Entidad `WeekTemplate` & `WeekTemplateItem`
+    - [x] Registrar Módulos en `AppModule` (TemplatesModule incluido)
+- [ ] **Fase 2: Módulos CRUD**
+    - [x] Disciplines Module (CRUD Completo)
+    - [ ] Athlete Module

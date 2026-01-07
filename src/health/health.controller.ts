@@ -1,19 +1,14 @@
 import { Controller, Get } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { HealthCheck } from '../health-check/entities/health-check.entity';
+import { DataSource } from 'typeorm';
 
 @Controller('health')
 export class HealthController {
-    constructor(
-        @InjectRepository(HealthCheck)
-        private healthCheckRepository: Repository<HealthCheck>,
-    ) { }
+    constructor(private dataSource: DataSource) { }
 
     @Get()
     async check() {
-        // Verificar conexión a base de datos intentando una consulta simple
-        await this.healthCheckRepository.count();
+        // Verificar conexión con consulta nativa ligera (SELECT 1)
+        await this.dataSource.query('SELECT 1');
         return { status: 'ok', timestamp: new Date().toISOString() };
     }
 }
