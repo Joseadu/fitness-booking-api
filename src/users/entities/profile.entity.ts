@@ -1,5 +1,5 @@
 import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
-import { BoxMembership } from './box-membership.entity';
+import { BoxMembership } from '../../memberships/entities/box-membership.entity';
 
 @Entity('profiles')
 export class Profile {

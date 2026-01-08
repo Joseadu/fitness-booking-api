@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Profile } from './entities/profile.entity';
+import { Profile } from '../users/entities/profile.entity';
+import { BoxMembership } from '../memberships/entities/box-membership.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
@@ -14,13 +15,9 @@ export class AthleteService {
     async findOne(id: string): Promise<Profile> {
         const profile = await this.profileRepository.findOne({
             where: { id },
-            relations: ['memberships', 'memberships.box'], // Cargamos membresías y el box asociado (si la entidad Box está relacionada en Membership, pero BoxMembership no tiene relation a Box aun? Revisar).
+            // Cargamos membresías. Nota: Si la entidad BoxMembership evoluciona a tener relation a Box, añadir 'memberships.box'
+            relations: ['memberships'],
         });
-        // Si BoxMembership no tiene relacion a Box, quitar 'memberships.box'.
-        // He revisado BoxMembership y tiene boxId columna, pero no relacion @ManyToOne a Box.
-        // Asi que solo 'memberships' por ahora.
-
-        // Un fix rapido: voy a usar relations: ['memberships']
         // Si no existe perfil, throw.
         if (!profile) {
             throw new NotFoundException(`Profile with ID "${id}" not found`);
@@ -32,5 +29,29 @@ export class AthleteService {
         await this.findOne(id); // Check existence
         await this.profileRepository.update(id, updateProfileDto);
         return this.findOne(id); // Return updated
+    }
+    async findAllByBox(boxId: string): Promise<Profile[]> {
+        const memberships = await this.profileRepository.manager
+            .getRepository(BoxMembership)
+            .find({
+                where: { boxId },
+                relations: ['profile'],
+            });
+
+        return memberships.map(m => m.profile);
+    }
+
+    async removeMembership(userId: string, boxId: string): Promise<void> {
+        const membership = await this.profileRepository.manager
+            .getRepository(BoxMembership)
+            .findOne({ where: { userId, boxId } });
+
+        if (!membership) {
+            throw new NotFoundException(`Membership not found for user ${userId} in box ${boxId}`);
+        }
+
+        await this.profileRepository.manager
+            .getRepository(BoxMembership)
+            .remove(membership);
     }
 }

@@ -1,3 +1,5 @@
+import { UsersModule } from './users/users.module';
+import { MembershipsModule } from './memberships/memberships.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -38,6 +40,8 @@ import { AppService } from './app.service';
     SchedulesModule,
     BookingsModule,
     TemplatesModule,
+    UsersModule,
+    MembershipsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

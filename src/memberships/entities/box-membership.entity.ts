@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Profile } from './profile.entity';
+import { Profile } from '../../users/entities/profile.entity';
 import { Box } from '../../boxes/entities/box.entity';
 
 @Entity('box_memberships')
