@@ -39,4 +39,4 @@ Este archivo se actualizará automáticamente con el progreso del desarrollo.
     - [x] Registrar Módulos en `AppModule` (TemplatesModule incluido)
 - [ ] **Fase 2: Módulos CRUD**
     - [x] Disciplines Module (CRUD Completo)
-    - [ ] Athlete Module
+    - [x] Athlete Module (Profile + Memberships Read)

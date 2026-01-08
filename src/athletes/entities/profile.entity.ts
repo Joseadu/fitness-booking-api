@@ -1,4 +1,5 @@
-import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { BoxMembership } from './box-membership.entity';
 
 @Entity('profiles')
 export class Profile {
@@ -25,4 +26,7 @@ export class Profile {
 
     @Column('uuid', { name: 'active_box_id', nullable: true })
     activeBoxId: string;
+
+    @OneToMany(() => BoxMembership, (membership) => membership.profile)
+    memberships: BoxMembership[];
 }
