@@ -1,9 +1,7 @@
 import { IsOptional, IsString, IsUUID, IsUrl } from 'class-validator';
 
 export class CreateProfileDto {
-    @IsString()
-    @IsOptional()
-    username?: string;
+
 
     @IsString()
     @IsOptional()
@@ -13,9 +11,17 @@ export class CreateProfileDto {
     @IsOptional()
     avatarUrl?: string;
 
-    @IsUrl()
+    @IsString()
     @IsOptional()
-    website?: string;
+    phone?: string;
+
+    @IsString()
+    @IsOptional()
+    emergencyContact?: string;
+
+    // Date validators can differ, using IsString or specific date validation
+    @IsOptional()
+    birthDate?: Date;
 
     @IsUUID()
     @IsOptional()

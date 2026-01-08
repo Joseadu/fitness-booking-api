@@ -6,9 +6,6 @@ export class Profile {
     @PrimaryColumn('uuid')
     id: string;
 
-    @Column('text', { nullable: true })
-    username: string;
-
     @Column('text', { name: 'full_name', nullable: true })
     fullName: string;
 
@@ -16,10 +13,16 @@ export class Profile {
     avatarUrl: string;
 
     @Column('text', { nullable: true })
-    website: string;
+    phone: string;
 
-    @CreateDateColumn({ name: 'created_at' })
-    createdAt: Date;
+    @Column('text', { name: 'emergency_contact', nullable: true })
+    emergencyContact: string;
+
+    @Column('date', { name: 'birth_date', nullable: true })
+    birthDate: Date;
+
+    @CreateDateColumn({ name: 'joined_at' })
+    joinedAt: Date;
 
     @UpdateDateColumn({ name: 'updated_at' })
     updatedAt: Date;
