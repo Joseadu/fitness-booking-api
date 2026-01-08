@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Schedule } from '../../schedules/entities/schedule.entity';
 
 @Entity('bookings')
 export class Booking {
@@ -8,18 +9,16 @@ export class Booking {
     @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
 
-    @Column('uuid', { name: 'box_id' })
-    boxId: string;
-
     @Column('uuid', { name: 'schedule_id' })
     scheduleId: string;
+
+    @ManyToOne(() => Schedule, (schedule) => schedule.bookings)
+    @JoinColumn({ name: 'schedule_id' })
+    schedule: Schedule;
 
     @Column('uuid', { name: 'athlete_id' })
     athleteId: string;
 
-    @Column('text', { name: 'status', default: 'active' }) // active, cancelled
+    @Column('text', { name: 'status', default: 'active' })
     status: string;
-
-    @Column('date', { name: 'date', nullable: true }) // redundancy usually found in bookings
-    date: string;
 }
