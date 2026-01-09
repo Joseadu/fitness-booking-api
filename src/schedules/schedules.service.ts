@@ -37,17 +37,25 @@ export class SchedulesService {
             const count = confirmedBookings.length;
             const userHasBooked = confirmedBookings.some(b => b.athleteId === userId);
 
+            // Mapeo explicito para asegurar CamelCase en frontend
             return {
                 id: schedule.id,
-                date: schedule.date,          // Direct string "YYYY-MM-DD"
-                startTime: schedule.startTime, // Direct string "HH:mm:ss" usually
+                date: schedule.date,
+                startTime: schedule.startTime,
                 endTime: schedule.endTime,
-                capacity: schedule.maxCapacity,
-                currentBookings: count,
-                spotsAvailable: Math.max(0, schedule.maxCapacity - count),
-                userHasBooked: userHasBooked,
-                isCancelled: schedule.isCancelled,
+                // Asegurar booleans (por si viene snake_case de DB cruda)
+                isVisible: (schedule as any).isVisible ?? (schedule as any).is_visible ?? true,
+                isCancelled: (schedule as any).isCancelled ?? (schedule as any).is_cancelled ?? false,
                 cancelReason: schedule.cancellationReason,
+
+                // Capacidad segura
+                capacity: (schedule as any).maxCapacity ?? (schedule as any).max_capacity ?? 15,
+                maxCapacity: (schedule as any).maxCapacity ?? (schedule as any).max_capacity ?? 15,
+
+                currentBookings: count,
+                spotsAvailable: Math.max(0, ((schedule as any).maxCapacity || 15) - count),
+                userHasBooked: userHasBooked,
+
                 discipline: {
                     id: schedule.discipline?.id,
                     name: schedule.discipline?.name,
@@ -58,30 +66,31 @@ export class SchedulesService {
         });
     }
 
-    async create(createScheduleDto: CreateScheduleDto): Promise<Schedule> {
-        const { date, startTime, durationMinutes, capacity, trainerId, ...rest } = createScheduleDto;
+    async create(dtos: CreateScheduleDto[]): Promise<Schedule[]> {
+        const schedulesToSave: Schedule[] = [];
 
-        // Calcular endTime simple
-        // OJO: Postgres TIME type es string 'HH:MM:SS'. 
-        // Si queremos calcular duration, necesitamos parsear.
-        const [hours, minutes] = startTime.split(':').map(Number);
-        const startTotalMins = hours * 60 + minutes;
-        const endTotalMins = startTotalMins + durationMinutes;
+        for (const dto of dtos) {
+            // Extraer campos y gestionar capacity legacy
+            const { date, startTime, endTime, maxCapacity, capacity, trainerId, boxId, ...rest } = dto;
+            const finalCapacity = maxCapacity || capacity || 15;
 
-        const endHours = Math.floor(endTotalMins / 60) % 24;
-        const endMins = endTotalMins % 60;
-        const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+            const schedule = this.scheduleRepository.create({
+                ...rest,
+                boxId, // Aseguramos boxId
+                date,
+                startTime,
+                endTime,
+                maxCapacity: finalCapacity,
+                trainerId,
+                isVisible: true,
+                isCancelled: false
+            });
 
-        const schedule = this.scheduleRepository.create({
-            ...rest,
-            date: date,
-            startTime: startTime,
-            endTime: endTime,
-            maxCapacity: capacity,
-            trainerId: trainerId,
-        });
+            schedulesToSave.push(schedule);
+        }
 
-        return this.scheduleRepository.save(schedule);
+        // Guardado masivo
+        return this.scheduleRepository.save(schedulesToSave);
     }
 
     async copyWeek(boxId: string, fromDate: string, toDate: string): Promise<void> {

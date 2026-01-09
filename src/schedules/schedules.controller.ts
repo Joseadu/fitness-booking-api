@@ -32,8 +32,10 @@ export class SchedulesController {
 
     @Post()
     // @Roles('OWNER') -> Futuro
-    create(@Body() createScheduleDto: CreateScheduleDto) {
-        return this.schedulesService.create(createScheduleDto);
+    create(@Body() body: CreateScheduleDto | CreateScheduleDto[]) {
+        // Normalización: Si es objeto único, convertir a array
+        const schedules = Array.isArray(body) ? body : [body];
+        return this.schedulesService.create(schedules);
     }
 
     @Post('copy-week')
