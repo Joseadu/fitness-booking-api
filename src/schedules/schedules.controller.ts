@@ -16,10 +16,12 @@ export class SchedulesController {
     @Get()
     findAll(
         @Query('boxId') boxId: string,
+        @Query('fromDate') fromDate: string,
+        @Query('toDate') toDate: string,
         @Request() req
     ) {
         // Validar boxId
-        return this.schedulesService.findAllByBox(boxId, req.user.userId);
+        return this.schedulesService.findAllByBox(boxId, req.user.userId, fromDate, toDate);
     }
 
     @Post()

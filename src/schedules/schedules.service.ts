@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { Schedule } from './entities/schedule.entity';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { ScheduleResponseDto } from './dto/schedule-response.dto';
@@ -13,13 +13,23 @@ export class SchedulesService {
         private scheduleRepository: Repository<Schedule>,
     ) { }
 
-    async findAllByBox(boxId: string, userId: string): Promise<ScheduleResponseDto[]> {
+    async findAllByBox(boxId: string, userId: string, fromDate?: string, toDate?: string): Promise<ScheduleResponseDto[]> {
+        const where: any = {
+            boxId,
+            isVisible: true,
+            isCancelled: false
+        };
+
+        if (fromDate && toDate) {
+            where.date = Between(fromDate, toDate);
+        } else if (fromDate) {
+            where.date = MoreThanOrEqual(fromDate);
+        } else if (toDate) {
+            where.date = LessThanOrEqual(toDate);
+        }
+
         const schedules = await this.scheduleRepository.find({
-            where: {
-                boxId,
-                isVisible: true,
-                isCancelled: false
-            },
+            where,
             relations: ['discipline', 'bookings'],
             order: { date: 'ASC', startTime: 'ASC' },
         });
