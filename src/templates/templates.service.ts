@@ -207,10 +207,7 @@ export class TemplatesService {
         const mondayDate = this.validateMonday(targetWeekStartDate);
 
         const template = await this.findOne(templateId);
-
-        if (!template.items || template.items.length === 0) {
-            throw new BadRequestException('Template has no items');
-        }
+        if (!template || !template.items || template.items.length === 0) return;
 
         const schedulesToCreate: any[] = [];
 
@@ -219,30 +216,34 @@ export class TemplatesService {
             itemDate.setDate(mondayDate.getDate() + (item.dayOfWeek - 1));
             const dateStr = itemDate.toISOString().split('T')[0];
 
-            // Crear objeto plano para QueryBuilder
-            schedulesToCreate.push({
+            const schedule = {
                 boxId: template.boxId,
+                disciplineId: item.disciplineId, // Correcto según Entity
+                trainerId: item.trainerId,
                 date: dateStr,
                 startTime: item.startTime,
                 endTime: item.endTime,
-                disciplineId: item.disciplineId,
-                trainerId: item.trainerId,
-                maxCapacity: item.maxCapacity,
-                name: item.name,
-                description: item.description,
-                isVisible: false,
+                maxCapacity: item.maxCapacity, // Correcto según Entity
+
+                // CAMPOS CRÍTICOS
+                currentBookings: 0,
                 isCancelled: false,
-            });
+                isVisible: true, // <--- IMPRESCINDIBLE: true para que findAll las devuelva
+
+                name: item.name,
+                description: item.description
+            };
+
+            schedulesToCreate.push(schedule);
         }
 
         if (schedulesToCreate.length > 0) {
-            // INSERT ... ON CONFLICT DO NOTHING / OR IGNORE
             await this.scheduleRepo
                 .createQueryBuilder()
                 .insert()
                 .into(Schedule)
-                .values(schedulesToCreate as any)
-                .orIgnore() // Ignora duplicados si violan constraints (PK/Unique).
+                .values(schedulesToCreate)
+                .orIgnore() // Evita duplicados y errores de constraints únicos
                 .execute();
         }
     }

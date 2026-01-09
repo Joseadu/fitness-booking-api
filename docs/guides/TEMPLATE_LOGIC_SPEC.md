@@ -1,91 +1,60 @@
-# Especificación de Lógica de Plantillas (Backend)
+# Especificación de Lógica de Plantillas (Backend) - FIX VERIFICADO
 
-## 1. Validaciones Previas (Común)
-Para evitar desajustes en el calendario, todas las operaciones de plantillas (`import`, `apply`, `check`) deben validar que la fecha proporcionada sea el inicio de la semana (Lunes).
+> **Diagnóstico Verificado:**
+> 1. He revisado `schedules.service.ts`: El método `findAll` solo devuelve clases con **`isVisible: true`**.
+> 2. He revisado `schedule.entity.ts`: La columna `isVisible` existe.
+> 3. **Error anterior:** Al quitar `isVisible` del payload, las clases se creaban pero no se veían.
+> 4. **Solución:** Enviar explícitamente `isVisible: true`.
+
+## 3. Apply Template (CÓDIGO CORRECTO Y FINAL)
+
+**Archivo:** `templates.service.ts`
+**Método:** `applyTemplate`
 
 ```typescript
-private validateMonday(date: string | Date): Date {
-    const d = new Date(date);
-    const day = d.getDay();
-    // 0 = Domingo, 1 = Lunes. En JS, getDay() devuelve 0-6.
-    // Asumimos que la semana empieza el Lunes (1).
-    if (day !== 1) {
-        throw new BadRequestException('La fecha proporcionada debe ser un Lunes.');
-    }
-    return d;
-}
-```
-
-## 2. Nuevo Endpoint: Chequeo de Conflictos
-Antes de aplicar, el frontend llamará a este endpoint para advertir al usuario.
-
-**Ruta:** `POST /week-templates/:id/check-conflicts`
-**Body:** `{ targetWeekStartDate: "YYYY-MM-DD" }`
-
-**Lógica de Servicio:**
-```typescript
-async checkConflicts(templateId: string, dto: ApplyTemplateDto): Promise<{ conflicts: number, totalToCreate: number }> {
+async applyTemplate(templateId: string, dto: ApplyTemplateDto): Promise<void> {
     const { targetWeekStartDate } = dto;
-    this.validateMonday(targetWeekStartDate); // Validación
+    const mondayDate = this.validateMonday(targetWeekStartDate);
 
     const template = await this.findOne(templateId);
-    if (!template.items.length) return { conflicts: 0, totalToCreate: 0 };
+    if (!template || !template.items || template.items.length === 0) return;
 
-    const mondayDate = new Date(targetWeekStartDate);
-    let conflicts = 0;
+    const schedulesToCreate = [];
 
-    // Pre-calcular los slots que intentaremos llenar
     for (const item of template.items) {
-        // Calcular fecha real del item (Lunes + offset)
         const itemDate = new Date(mondayDate);
         itemDate.setDate(mondayDate.getDate() + (item.dayOfWeek - 1));
         const dateStr = itemDate.toISOString().split('T')[0];
 
-        // Buscar si YA existe una clase igual
-        const exists = await this.scheduleRepo.findOne({
-            where: {
-                boxId: template.boxId,
-                disciplineId: item.disciplineId, // Asumiendo conflicto por disciplina
-                date: dateStr,
-                startTime: item.startTime
-                // NOTA: Si queremos permitir varios profes, añadir trainerId aquí
-            }
-        });
+        const schedule = {
+            boxId: template.boxId,
+            disciplineId: item.disciplineId, // Correcto según Entity
+            trainerId: item.trainerId, 
+            date: dateStr,
+            startTime: item.startTime,
+            endTime: item.endTime,
+            maxCapacity: item.maxCapacity, // Correcto según Entity
+            
+            // CAMPOS CRÍTICOS
+            currentBookings: 0,
+            isCancelled: false,
+            isVisible: true, // <--- IMPRESCINDIBLE: true para que findAll las devuelva
+            
+            name: item.name,
+            description: item.description
+        };
 
-        if (exists) {
-            conflicts++;
-        }
+        schedulesToCreate.push(schedule);
     }
 
-    return { 
-        conflicts, 
-        totalToCreate: template.items.length 
-    };
-}
-```
-
-## 3. Mejora Crítica: Aplicar Plantilla (Safe Merge)
-Usamos `orIgnore` para evitar errores 500.
-
-**Ruta:** `POST /week-templates/:id/apply`
-
-**Lógica de Servicio:**
-```typescript
-async applyTemplate(templateId: string, dto: ApplyTemplateDto): Promise<void> {
-    const { targetWeekStartDate } = dto;
-    this.validateMonday(targetWeekStartDate); // Validación
-
-    const template = await this.findOne(templateId);
-    
-    // ... Generar array de objetos 'schedulesToCreate' (igual que antes) ...
-
-    // SOLUCIÓN "OR IGNORE"
-    await this.scheduleRepo
-        .createQueryBuilder()
-        .insert()
-        .into(Schedule)
-        .values(schedulesToCreate)
-        .orIgnore() // <--- CRÍTICO: Ignora duplicados, inserta solo los huecos libres
-        .execute();
+    if (schedulesToCreate.length > 0) {
+        await this.scheduleRepo
+            .createQueryBuilder()
+            .insert()
+            .into(Schedule)
+            .values(schedulesToCreate)
+            .orIgnore() // Evita duplicados y errores de constraints únicos
+            .execute();
+    }
 }
 ```

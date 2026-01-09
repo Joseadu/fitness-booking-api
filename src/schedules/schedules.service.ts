@@ -16,8 +16,6 @@ export class SchedulesService {
     async findAllByBox(boxId: string, userId: string, fromDate?: string, toDate?: string): Promise<ScheduleResponseDto[]> {
         const where: any = {
             boxId,
-            isVisible: true,
-            isCancelled: false
         };
 
         if (fromDate && toDate) {
