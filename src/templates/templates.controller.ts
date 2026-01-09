@@ -49,6 +49,11 @@ export class TemplatesController {
         return this.templatesService.applyTemplate(id, dto);
     }
 
+    @Post(':id/check-conflicts')
+    checkConflicts(@Param('id') id: string, @Body() dto: ApplyTemplateDto) {
+        return this.templatesService.checkConflicts(id, dto);
+    }
+
     // --- Item CRUD (Nested) ---
 
     @Post(':id/items')

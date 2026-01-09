@@ -158,29 +158,69 @@ export class TemplatesService {
 
     // --- BUSINESS LOGIC: APPLY ---
 
-    async applyTemplate(templateId: string, dto: ApplyTemplateDto): Promise<Schedule[]> {
+    private validateMonday(dateStr: string): Date {
+        const d = new Date(dateStr);
+        // getDay(): 0=Domingo, 1=Lunes.
+        if (d.getDay() !== 1) {
+            throw new BadRequestException('La fecha proporcionada debe ser un Lunes.');
+        }
+        return d;
+    }
+
+    async checkConflicts(templateId: string, dto: ApplyTemplateDto): Promise<{ conflicts: number, totalToCreate: number }> {
         const { targetWeekStartDate } = dto;
-        const template = await this.findOne(templateId); // Trae items
+        const mondayDate = this.validateMonday(targetWeekStartDate);
+
+        const template = await this.findOne(templateId);
+        if (!template.items || template.items.length === 0) return { conflicts: 0, totalToCreate: 0 };
+
+        let conflicts = 0;
+
+        for (const item of template.items) {
+            const itemDate = new Date(mondayDate);
+            itemDate.setDate(mondayDate.getDate() + (item.dayOfWeek - 1));
+            const dateStr = itemDate.toISOString().split('T')[0];
+
+            const exists = await this.scheduleRepo.findOne({
+                where: {
+                    boxId: template.boxId,
+                    disciplineId: item.disciplineId,
+                    date: dateStr,
+                    startTime: item.startTime,
+                    isCancelled: false
+                }
+            });
+
+            if (exists) {
+                conflicts++;
+            }
+        }
+
+        return {
+            conflicts,
+            totalToCreate: template.items.length
+        };
+    }
+
+    async applyTemplate(templateId: string, dto: ApplyTemplateDto): Promise<void> {
+        const { targetWeekStartDate } = dto;
+        const mondayDate = this.validateMonday(targetWeekStartDate);
+
+        const template = await this.findOne(templateId);
 
         if (!template.items || template.items.length === 0) {
             throw new BadRequestException('Template has no items');
         }
 
-        // Validar que sea lunes? (Opcional, pero recomendable)
-        const mondayDate = new Date(targetWeekStartDate);
-        // if (mondayDate.getDay() !== 1) ... throw error "Must start on Monday"
-
-        const schedulesToCreate: Schedule[] = [];
+        const schedulesToCreate: any[] = [];
 
         for (const item of template.items) {
-            // Calcular fecha para este item
-            // item.dayOfWeek: 1=Lunes ... 7=Domingo
-            // target=Lunes. Offset = dayOfWeek - 1.
             const itemDate = new Date(mondayDate);
             itemDate.setDate(mondayDate.getDate() + (item.dayOfWeek - 1));
             const dateStr = itemDate.toISOString().split('T')[0];
 
-            const schedule = this.scheduleRepo.create({
+            // Crear objeto plano para QueryBuilder
+            schedulesToCreate.push({
                 boxId: template.boxId,
                 date: dateStr,
                 startTime: item.startTime,
@@ -190,14 +230,20 @@ export class TemplatesService {
                 maxCapacity: item.maxCapacity,
                 name: item.name,
                 description: item.description,
-                isVisible: false, // BOTE EL BORRADOR
+                isVisible: false,
                 isCancelled: false,
             });
-            schedulesToCreate.push(schedule);
         }
 
-        // Guardar todo
-        // Podríamos usar transaction también, pero save([]) es atómico a nivel de typeorm batch insert
-        return this.scheduleRepo.save(schedulesToCreate);
+        if (schedulesToCreate.length > 0) {
+            // INSERT ... ON CONFLICT DO NOTHING / OR IGNORE
+            await this.scheduleRepo
+                .createQueryBuilder()
+                .insert()
+                .into(Schedule)
+                .values(schedulesToCreate as any)
+                .orIgnore() // Ignora duplicados si violan constraints (PK/Unique).
+                .execute();
+        }
     }
 }
