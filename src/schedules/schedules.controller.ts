@@ -24,6 +24,12 @@ export class SchedulesController {
         return this.schedulesService.findAllByBox(boxId, req.user.userId, fromDate, toDate);
     }
 
+    // UN SOLO ENDPOINT PARA TODO
+    @Post('delete')
+    delete(@Body() body: { ids: string[] }) {
+        return this.schedulesService.delete(body.ids);
+    }
+
     @Post()
     // @Roles('OWNER') -> Futuro
     create(@Body() createScheduleDto: CreateScheduleDto) {

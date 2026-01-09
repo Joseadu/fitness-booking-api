@@ -189,4 +189,11 @@ export class SchedulesService {
             };
         }).filter(item => item !== null); // Filtrar nulos
     }
+
+    async delete(ids: string[]): Promise<void> {
+        if (!ids || ids.length === 0) return;
+
+        // Borra por bloque, muy eficiente
+        await this.scheduleRepository.delete(ids);
+    }
 }
