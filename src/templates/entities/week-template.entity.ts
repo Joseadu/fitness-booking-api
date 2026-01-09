@@ -1,16 +1,34 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import { Box } from '../../boxes/entities/box.entity';
+import { WeekTemplateItem } from './week-template-item.entity';
 
 @Entity('week_templates')
 export class WeekTemplate {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
-    createdAt: Date;
+    @Column('uuid', { name: 'box_id' })
+    boxId: string;
+
+    @ManyToOne(() => Box)
+    @JoinColumn({ name: 'box_id' })
+    box: Box;
 
     @Column('text')
     name: string;
 
-    @Column('uuid', { name: 'box_id' })
-    boxId: string;
+    @Column('text', { nullable: true })
+    description: string;
+
+    @Column('boolean', { name: 'is_active', default: true })
+    isActive: boolean;
+
+    @OneToMany(() => WeekTemplateItem, (item) => item.template)
+    items: WeekTemplateItem[];
+
+    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+    createdAt: Date;
+
+    @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+    updatedAt: Date;
 }

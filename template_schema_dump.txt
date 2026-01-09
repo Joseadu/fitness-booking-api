@@ -1,0 +1,22 @@
+
+--- Table: week_templates ---
+  id (uuid) NOT NULL Default: gen_random_uuid()
+  box_id (uuid) NOT NULL Default: null
+  name (text) NOT NULL Default: null
+  description (text) NULL Default: null
+  created_at (timestamp with time zone) NULL Default: now()
+  updated_at (timestamp with time zone) NULL Default: now()
+  is_active (boolean) NOT NULL Default: true
+
+--- Table: week_template_items ---
+  id (uuid) NOT NULL Default: gen_random_uuid()
+  template_id (uuid) NOT NULL Default: null
+  discipline_id (uuid) NOT NULL Default: null
+  trainer_id (uuid) NULL Default: null
+  day_of_week (integer) NOT NULL Default: null
+  start_time (time without time zone) NOT NULL Default: null
+  end_time (time without time zone) NOT NULL Default: null
+  max_capacity (integer) NOT NULL Default: 15
+  name (text) NULL Default: null
+  description (text) NULL Default: null
+  created_at (timestamp with time zone) NULL Default: now()
