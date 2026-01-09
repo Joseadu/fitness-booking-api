@@ -20,6 +20,7 @@ export class ScheduleResponseDto {
     };
 
     userHasBooked: boolean; // ¿El usuario que pide la lista está apuntado?
+    userBookingId?: string; // ID de la reserva si el usuario la tiene
     isCancelled: boolean;
     cancelReason?: string;
 

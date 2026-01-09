@@ -132,4 +132,53 @@ export class SchedulesService {
 
         await bookingRepo.remove(booking);
     }
+
+    async findMyBookings(userId: string): Promise<ScheduleResponseDto[]> {
+        const bookingRepo = this.scheduleRepository.manager.getRepository(Booking);
+
+        // Buscar reservas activas del usuario
+        const bookings = await bookingRepo.find({
+            where: {
+                athleteId: userId,
+                // status: 'active' // Descomenta si usas status
+            },
+            relations: ['schedule', 'schedule.discipline'], // Join con Schedule y Discipline
+            order: {
+                schedule: {
+                    date: 'ASC',
+                    startTime: 'ASC'
+                }
+            }
+        });
+
+        // Mapear al formato DTO
+        return bookings.map(booking => {
+            const schedule = booking.schedule;
+
+            // Si la clase se borró pero la reserva sigue (caso raro), no petamos
+            if (!schedule) return null;
+
+            return {
+                id: schedule.id,
+                date: schedule.date,
+                startTime: schedule.startTime,
+                endTime: schedule.endTime,
+                capacity: schedule.maxCapacity,
+                // currentBookings y spotsAvailable serían queries extra, 
+                // para listado "my bookings" podemos devolver 0 o null si no es crítico.
+                currentBookings: 0,
+                spotsAvailable: 0,
+                userHasBooked: true,
+                userBookingId: booking.id,
+                isCancelled: schedule.isCancelled,
+                cancelReason: schedule.cancellationReason,
+                discipline: {
+                    id: schedule.discipline?.id,
+                    name: schedule.discipline?.name,
+                    color: schedule.discipline?.color
+                },
+                coach: schedule.trainerId ? { id: schedule.trainerId, name: 'Coach' } : undefined,
+            };
+        }).filter(item => item !== null); // Filtrar nulos
+    }
 }

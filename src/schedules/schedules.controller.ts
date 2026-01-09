@@ -8,6 +8,11 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 export class SchedulesController {
     constructor(private readonly schedulesService: SchedulesService) { }
 
+    @Get('my-bookings')
+    findMyBookings(@Request() req) {
+        return this.schedulesService.findMyBookings(req.user.userId);
+    }
+
     @Get()
     findAll(
         @Query('boxId') boxId: string,
