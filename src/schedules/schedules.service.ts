@@ -281,4 +281,22 @@ export class SchedulesService {
         // Borra por bloque, muy eficiente
         await this.scheduleRepository.delete(ids);
     }
+
+    // PUBLISH WEEK
+    async publishWeek(boxId: string, weekStartStr: string): Promise<void> {
+        // Calcular rango de fechas
+        const start = new Date(weekStartStr);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        // Update masivo inteligente: Solo las ocultas y activas
+        await this.scheduleRepository.update(
+            {
+                boxId,
+                date: Between(start.toISOString().split('T')[0], end.toISOString().split('T')[0]),
+                isVisible: false,
+                isCancelled: false
+            },
+            { isVisible: true }
+        );
+    }
 }

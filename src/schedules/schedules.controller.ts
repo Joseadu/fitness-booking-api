@@ -54,7 +54,7 @@ export class SchedulesController {
         return this.schedulesService.findOne(id);
     }
 
-    // UPDATE (Para guardar cambios)
+    // UPDATE (Para guardar cambios. También para publicar una clase o muchas seleccionadas de una programación)
     @Put(':id')
     update(@Param('id') id: string, @Body() updateDto: any) {
         return this.schedulesService.update(id, updateDto);
@@ -70,5 +70,11 @@ export class SchedulesController {
     @Post(':id/reactivate')
     reactivate(@Param('id') id: string) {
         return this.schedulesService.reactivate(id);
+    }
+
+    // PUBLISH WEEK (publicar una semana)
+    @Post('publish-week')
+    publishWeek(@Body() body: { boxId: string, weekStart: string }) {
+        return this.schedulesService.publishWeek(body.boxId, body.weekStart);
     }
 }
