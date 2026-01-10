@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateScheduleDto {
     @IsNotEmpty() @IsString() date: string;
@@ -21,4 +21,8 @@ export class CreateScheduleDto {
     @IsOptional() @IsNumber() capacity?: number; // Legacy support
     @IsOptional() @IsString() name?: string;
     @IsOptional() @IsString() description?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    isVisible?: boolean;
 }

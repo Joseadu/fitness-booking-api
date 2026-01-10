@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, UseGuards, Request, Delete, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards, Request, Delete, Param, Put } from '@nestjs/common';
 import { SchedulesService } from './schedules.service';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -46,5 +46,29 @@ export class SchedulesController {
     @Delete(':id/booking')
     unsubscribe(@Param('id') scheduleId: string, @Request() req) {
         return this.schedulesService.unsubscribe(scheduleId, req.user.userId);
+    }
+
+    // GET ONE (Para editar)
+    @Get(':id')
+    findOne(@Param('id') id: string) {
+        return this.schedulesService.findOne(id);
+    }
+
+    // UPDATE (Para guardar cambios)
+    @Put(':id')
+    update(@Param('id') id: string, @Body() updateDto: any) {
+        return this.schedulesService.update(id, updateDto);
+    }
+
+    // CANCEL (Lógica de negocio)
+    @Post(':id/cancel')
+    cancel(@Param('id') id: string, @Body() body: { reason: string }) {
+        return this.schedulesService.cancel(id, body.reason);
+    }
+
+    // REACTIVATE (Lógica de negocio)
+    @Post(':id/reactivate')
+    reactivate(@Param('id') id: string) {
+        return this.schedulesService.reactivate(id);
     }
 }

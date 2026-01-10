@@ -46,7 +46,7 @@ export class SchedulesService {
                 // Asegurar booleans (por si viene snake_case de DB cruda)
                 isVisible: (schedule as any).isVisible ?? (schedule as any).is_visible ?? true,
                 isCancelled: (schedule as any).isCancelled ?? (schedule as any).is_cancelled ?? false,
-                cancelReason: schedule.cancellationReason,
+                cancelReason: schedule.cancellationReason || undefined,
 
                 // Capacidad segura
                 capacity: (schedule as any).maxCapacity ?? (schedule as any).max_capacity ?? 15,
@@ -70,8 +70,8 @@ export class SchedulesService {
         const schedulesToSave: Schedule[] = [];
 
         for (const dto of dtos) {
-            // Extraer campos y gestionar capacity legacy
-            const { date, startTime, endTime, maxCapacity, capacity, trainerId, boxId, ...rest } = dto;
+            // Extraemos isVisible explícitamente
+            const { date, startTime, endTime, maxCapacity, capacity, trainerId, boxId, isVisible, ...rest } = dto;
             const finalCapacity = maxCapacity || capacity || 15;
 
             const schedule = this.scheduleRepository.create({
@@ -82,7 +82,10 @@ export class SchedulesService {
                 endTime,
                 maxCapacity: finalCapacity,
                 trainerId,
-                isVisible: true,
+
+                // Usamos el valor del DTO, o false si no viene (Borrador por defecto)
+                isVisible: isVisible ?? false,
+
                 isCancelled: false
             });
 
@@ -188,7 +191,7 @@ export class SchedulesService {
                 userHasBooked: true,
                 userBookingId: booking.id,
                 isCancelled: schedule.isCancelled,
-                cancelReason: schedule.cancellationReason,
+                cancelReason: schedule.cancellationReason || undefined, // Convert null to undefined
                 discipline: {
                     id: schedule.discipline?.id,
                     name: schedule.discipline?.name,
@@ -197,6 +200,79 @@ export class SchedulesService {
                 coach: schedule.trainerId ? { id: schedule.trainerId, name: 'Coach' } : undefined,
             };
         }).filter(item => item !== null); // Filtrar nulos
+    }
+
+    // GET ONE
+    async findOne(id: string) {
+        const schedule = await this.scheduleRepository.findOne({
+            where: { id },
+            relations: ['discipline', 'bookings']
+        });
+        if (!schedule) throw new NotFoundException('Clase no encontrada');
+
+        return this.mapScheduleResponse(schedule);
+    }
+
+    // UPDATE
+    async update(id: string, dto: any) {
+        const schedule = await this.scheduleRepository.findOne({ where: { id } });
+        if (!schedule) throw new NotFoundException('Clase no encontrada');
+
+        // Actualizar campos permitidos
+        if (dto.startTime) schedule.startTime = dto.startTime;
+        if (dto.endTime) schedule.endTime = dto.endTime;
+        if (dto.maxCapacity) schedule.maxCapacity = dto.maxCapacity;
+        if (dto.name !== undefined) schedule.name = dto.name;
+        if (dto.description !== undefined) schedule.description = dto.description;
+        // if (dto.notes !== undefined) schedule.notes = dto.notes; // Notes no existe en Entity aun
+        // Importante: Permitir toggle de visibilidad
+        if (dto.isVisible !== undefined) schedule.isVisible = dto.isVisible;
+
+        return this.scheduleRepository.save(schedule);
+    }
+
+    // CANCEL
+    async cancel(id: string, reason: string) {
+        const schedule = await this.scheduleRepository.findOne({ where: { id } });
+        if (!schedule) throw new NotFoundException('Clase no encontrada');
+
+        schedule.isCancelled = true;
+        schedule.cancellationReason = reason; // Entity property is cancellationReason, not cancelReason (check entity)
+        // Entity: @Column('text', { name: 'cancellation_reason', nullable: true }) cancellationReason: string;
+        // User snippet used cancelReason, but entity has cancellationReason. Adjusted.
+        schedule.isVisible = false;
+
+        return this.scheduleRepository.save(schedule);
+    }
+
+    // REACTIVATE
+    async reactivate(id: string) {
+        const schedule = await this.scheduleRepository.findOne({ where: { id } });
+        if (!schedule) throw new NotFoundException('Clase no encontrada');
+
+        schedule.isCancelled = false;
+        schedule.cancellationReason = null;
+        schedule.isVisible = true; // Al reactivar, la hacemos visible
+
+        return this.scheduleRepository.save(schedule);
+    }
+
+    // HELPER (Si no lo tienes ya, úsalo en findAll y findOne)
+    private mapScheduleResponse(schedule: any) {
+        return {
+            ...schedule,
+            isVisible: schedule.isVisible ?? schedule.is_visible ?? true,
+            isCancelled: schedule.isCancelled ?? schedule.is_cancelled ?? false,
+            maxCapacity: schedule.maxCapacity ?? schedule.max_capacity ?? 15,
+            cancelReason: (schedule.cancellationReason ?? schedule.cancelReason) || undefined,
+            // Asegulamos disciplina y coach si no vienen
+            discipline: schedule.discipline ? {
+                id: schedule.discipline.id,
+                name: schedule.discipline.name,
+                color: schedule.discipline.color
+            } : undefined,
+            coach: schedule.trainerId ? { id: schedule.trainerId, name: 'Coach' } : undefined,
+        };
     }
 
     async delete(ids: string[]): Promise<void> {

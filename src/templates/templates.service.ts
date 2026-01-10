@@ -206,9 +206,11 @@ export class TemplatesService {
         const { targetWeekStartDate } = dto;
         const mondayDate = this.validateMonday(targetWeekStartDate);
 
+        // 1. Cargar plantilla
         const template = await this.findOne(templateId);
         if (!template || !template.items || template.items.length === 0) return;
 
+        // 2. Generar Schedules
         const schedulesToCreate: any[] = [];
 
         for (const item of template.items) {
@@ -218,32 +220,34 @@ export class TemplatesService {
 
             const schedule = {
                 boxId: template.boxId,
-                disciplineId: item.disciplineId, // Correcto según Entity
+                disciplineId: item.disciplineId,
                 trainerId: item.trainerId,
                 date: dateStr,
                 startTime: item.startTime,
                 endTime: item.endTime,
-                maxCapacity: item.maxCapacity, // Correcto según Entity
+                // Asegurar capacidad por defecto
+                maxCapacity: item.maxCapacity || 15,
 
-                // CAMPOS CRÍTICOS
-                currentBookings: 0,
+                // --- CLAVE DEL FIX ---
+                isVisible: false, // FORZAMOS FALSE (Borrador)
                 isCancelled: false,
-                isVisible: true, // <--- IMPRESCINDIBLE: true para que findAll las devuelva
+                // ---------------------
 
                 name: item.name,
-                description: item.description
+                description: item.description,
             };
 
             schedulesToCreate.push(schedule);
         }
 
+        // 3. Insertar
         if (schedulesToCreate.length > 0) {
             await this.scheduleRepo
                 .createQueryBuilder()
                 .insert()
                 .into(Schedule)
                 .values(schedulesToCreate)
-                .orIgnore() // Evita duplicados y errores de constraints únicos
+                .orIgnore()
                 .execute();
         }
     }

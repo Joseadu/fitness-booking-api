@@ -53,7 +53,7 @@ export class Schedule {
     isCancelled: boolean;
 
     @Column('text', { name: 'cancellation_reason', nullable: true })
-    cancellationReason: string;
+    cancellationReason: string | null;
 
     @Column('text', { name: 'name', nullable: true })
     name: string;
