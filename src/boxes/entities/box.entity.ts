@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Expose } from 'class-transformer';
 
 @Entity('boxes')
 export class Box {
@@ -6,13 +7,13 @@ export class Box {
     id: string;
 
     @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
-    createdAt: Date;
+    created_at: Date;
 
     @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
-    updatedAt: Date;
+    updated_at: Date;
 
     @Column('uuid', { name: 'owner_id' })
-    ownerId: string;
+    owner_id: string;
 
     @Column('text')
     name: string;
@@ -30,11 +31,22 @@ export class Box {
     email: string;
 
     @Column('text', { name: 'logo_url', nullable: true })
-    logoUrl: string;
+    logo_url: string;
 
     @Column('jsonb', { nullable: true, default: {} })
     settings: any;
 
     @Column('boolean', { name: 'is_active', default: true })
-    isActive: boolean;
+    is_active: boolean;
+
+    // Aliases for Frontend compatibility (Legacy)
+    @Expose({ name: 'contact_email' })
+    get contactEmail(): string {
+        return this.email;
+    }
+
+    @Expose({ name: 'contact_phone' })
+    get contactPhone(): string {
+        return this.phone;
+    }
 }
