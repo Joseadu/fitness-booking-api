@@ -89,10 +89,10 @@ export class AuthService {
 
                 // Create Membership (Owner)
                 const membership = queryRunner.manager.create(BoxMembership, {
-                    userId: supabaseUserId,
-                    boxId: savedBox.id,
+                    user_id: supabaseUserId,
+                    box_id: savedBox.id,
                     role: 'business_owner',
-                    isActive: true,
+                    is_active: true,
                 });
                 await queryRunner.manager.save(membership);
 
@@ -103,10 +103,10 @@ export class AuthService {
                 // Check if box exists? (Optional, DB constraint will fail if not)
                 // Create Membership (Pending/Athlete)
                 const membership = queryRunner.manager.create(BoxMembership, {
-                    userId: supabaseUserId,
-                    boxId: boxId,
+                    user_id: supabaseUserId,
+                    box_id: boxId,
                     role: 'athlete',
-                    isActive: true, // Or false if you want 'pending' logic later
+                    is_active: true, // Or false if you want 'pending' logic later
                 });
                 await queryRunner.manager.save(membership);
             }

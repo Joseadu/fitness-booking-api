@@ -34,7 +34,7 @@ export class AthleteService {
         const memberships = await this.profileRepository.manager
             .getRepository(BoxMembership)
             .find({
-                where: { boxId },
+                where: { box_id: boxId },
                 relations: ['profile'],
             });
 
@@ -44,7 +44,7 @@ export class AthleteService {
     async removeMembership(userId: string, boxId: string): Promise<void> {
         const membership = await this.profileRepository.manager
             .getRepository(BoxMembership)
-            .findOne({ where: { userId, boxId } });
+            .findOne({ where: { user_id: userId, box_id: boxId } });
 
         if (!membership) {
             throw new NotFoundException(`Membership not found for user ${userId} in box ${boxId}`);

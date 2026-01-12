@@ -8,14 +8,14 @@ export class BoxMembership {
     id: string;
 
     @Column('uuid', { name: 'box_id' })
-    boxId: string;
+    box_id: string;
 
     @ManyToOne(() => Box)
     @JoinColumn({ name: 'box_id' })
     box: Box;
 
     @Column('uuid', { name: 'user_id' })
-    userId: string;
+    user_id: string;
 
     @ManyToOne(() => Profile, (profile) => profile.memberships)
     @JoinColumn({ name: 'user_id' })
@@ -25,17 +25,17 @@ export class BoxMembership {
     role: string;
 
     @Column('text', { name: 'membership_type', nullable: true, default: 'athlete' })
-    membershipType: string;
+    membership_type: string;
 
     @Column('boolean', { name: 'is_active', default: true })
-    isActive: boolean;
+    is_active: boolean;
 
     @Column('timestamptz', { name: 'joined_at', default: () => 'CURRENT_TIMESTAMP' })
-    joinedAt: Date;
+    joined_at: Date;
 
     @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
-    createdAt: Date;
+    created_at: Date;
 
     @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
-    updatedAt: Date;
+    updated_at: Date;
 }
