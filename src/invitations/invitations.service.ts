@@ -229,6 +229,37 @@ export class InvitationsService {
         }
     }
 
+    /**
+ * Acepta todas las invitaciones pendientes para un email
+ */
+    async acceptPendingInvitations(userId: string, email: string) {
+        // 1. Buscamos invitaciones pendientes por email
+        const invitations = await this.invitationRepository.find({
+            where: {
+                email: email,
+                status: InvitationStatus.PENDING
+            }
+        });
+
+        if (invitations.length === 0) {
+            return { message: 'No pending invitations', count: 0 };
+        }
+
+        // 2. Las aceptamos una por una (reutiliza tu lógica de accept)
+        const results: any[] = [];
+        for (const invitation of invitations) {
+            try {
+                // LLAMA A TU MÉTODO accept() EXISTENTE
+                const res = await this.accept(invitation.id, userId);
+                results.push(res);
+            } catch (error) {
+                console.error(`Failed to accept invitation ${invitation.id}`, error);
+            }
+        }
+
+        return { message: 'Processed', count: results.length, results };
+    }
+
     private generateTempPassword(): string {
         return 'fb-' + crypto.randomBytes(4).toString('hex');
     }

@@ -36,4 +36,10 @@ export class InvitationsController {
         // req.user.userId comes from JwtStrategy
         return this.invitationsService.accept(id, req.user.userId);
     }
+
+    // POST /invitations/accept-mine (Nuevo Endpoint)
+    @Post('invitations/accept-mine')
+    acceptMine(@Request() req) {
+        return this.invitationsService.acceptPendingInvitations(req.user.userId, req.user.email);
+    }
 }
