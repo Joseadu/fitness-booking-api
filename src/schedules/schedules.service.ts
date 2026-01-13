@@ -13,10 +13,15 @@ export class SchedulesService {
         private scheduleRepository: Repository<Schedule>,
     ) { }
 
-    async findAllByBox(boxId: string, userId: string, fromDate?: string, toDate?: string): Promise<ScheduleResponseDto[]> {
+    async findAllByBox(boxId: string, userId: string, fromDate?: string, toDate?: string, includeDrafts: boolean = false): Promise<ScheduleResponseDto[]> {
         const where: any = {
             boxId,
         };
+
+        // Si NO pedimos drafts, solo mostramos las visibles (Publicadas)
+        if (!includeDrafts) {
+            where.isVisible = true;
+        }
 
         if (fromDate && toDate) {
             where.date = Between(fromDate, toDate);

@@ -18,10 +18,12 @@ export class SchedulesController {
         @Query('boxId') boxId: string,
         @Query('fromDate') fromDate: string,
         @Query('toDate') toDate: string,
+        @Query('includeDrafts') includeDrafts: string,
         @Request() req
     ) {
         // Validar boxId
-        return this.schedulesService.findAllByBox(boxId, req.user.userId, fromDate, toDate);
+        const includeDraftsBool = includeDrafts === 'true';
+        return this.schedulesService.findAllByBox(boxId, req.user.userId, fromDate, toDate, includeDraftsBool);
     }
 
     // UN SOLO ENDPOINT PARA TODO
