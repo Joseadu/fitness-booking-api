@@ -1,5 +1,6 @@
 import { UsersModule } from './users/users.module';
 import { MembershipsModule } from './memberships/memberships.module';
+import { InvitationsModule } from './invitations/invitations.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -42,6 +43,7 @@ import { AppService } from './app.service';
     TemplatesModule,
     UsersModule,
     MembershipsModule,
+    InvitationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
