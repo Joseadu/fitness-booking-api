@@ -141,4 +141,19 @@ export class AuthService {
             await queryRunner.release();
         }
     }
+
+    async changeInitialPassword(userId: string, newPassword: string) {
+        // 1. Update Password
+        const { error: updateError } = await this.supabaseAdmin.auth.admin.updateUserById(userId, {
+            password: newPassword,
+            user_metadata: { mustChangePassword: false } // REMOVE FLAG
+        });
+
+        if (updateError) {
+            this.logger.error(`Failed to change initial password for ${userId}: ${updateError.message}`);
+            throw new InternalServerErrorException('Failed to update password');
+        }
+
+        return { message: 'Password updated successfully' };
+    }
 }

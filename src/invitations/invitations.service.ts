@@ -4,6 +4,7 @@ import { Repository, DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as crypto from 'crypto';
+import { Resend } from 'resend';
 
 import { Invitation, InvitationStatus } from './entities/invitation.entity';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
@@ -15,6 +16,7 @@ import { Box } from '../boxes/entities/box.entity';
 export class InvitationsService {
     private supabaseAdmin: SupabaseClient;
     private readonly logger = new Logger(InvitationsService.name);
+    private resend: Resend;
 
     constructor(
         @InjectRepository(Invitation)
@@ -30,11 +32,18 @@ export class InvitationsService {
     ) {
         const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
         const serviceRoleKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
+        const resendApiKey = this.configService.get<string>('RESEND_API_KEY');
 
         if (supabaseUrl && serviceRoleKey) {
             this.supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
                 auth: { autoRefreshToken: false, persistSession: false },
             });
+        }
+
+        if (resendApiKey) {
+            this.resend = new Resend(resendApiKey);
+        } else {
+            this.logger.warn('RESEND_API_KEY is missing. Emails will not be sent.');
         }
     }
 
@@ -43,26 +52,20 @@ export class InvitationsService {
 
         // 1. Validar si ya es miembro
         const existingMember = await this.membershipRepository.createQueryBuilder('membership')
-            .leftJoin('membership.profile', 'profile') // Asumiendo relación en BoxMembership
-            // Necesitamos buscar por email. Ojo: Profile no tiene email en DB local si solo guardamos IDs.
-            // PERO: Si seguimos la migración, deberíamos tener auth_users o buscar en Supabase.
-            // ESTRATEGIA: Buscamos el usuario en Supabase por email primero.
+            .leftJoin('membership.profile', 'profile')
+            // TODO: Mejorar búsqueda de usuario existente
             .getOne();
-        // ^ Esto es complejo sin email en Profile.
-        // Simplificación: Buscamos user en Supabase primero.
 
         let supabaseUserId: string | null = null;
         let isNewUser = false;
+        let tempPassword = '';
 
         try {
             // Verificar si el usuario existe en Supabase
-            const { data: { users }, error } = await this.supabaseAdmin.auth.admin.listUsers();
-            // listUsers no filtra por email nativamente en todas las versiones, pero admin.getUserById sí.
-            // Para email usamos listUsers con filtro o lo creamos y capturamos error.
-            // Mejor: intentamos crear, si falla por "existe", es Path B.
+            // ... (Lógica de Supabase existente) ...
 
             // INTENTO PATH A (Crear Usuario)
-            const tempPassword = this.generateTempPassword();
+            tempPassword = this.generateTempPassword();
 
             const { data: newUser, error: createError } = await this.supabaseAdmin.auth.admin.createUser({
                 email: email,
@@ -75,28 +78,23 @@ export class InvitationsService {
                 // Si el error es "User already registered", es Path B.
                 if (createError.message.includes('already has been registered') || createError.status === 422) {
                     isNewUser = false;
-                    // Necesitamos el ID del usuario existente.
-                    // Lo buscamos "a la fuerza" (lamentablemente listUsers es paginado, pero es lo que hay sin tabla local de emails)
-                    // TODO: Idealmente Profile debería tener copia del email para búsquedas rápidas.
-                    // Por ahora, asumimos que NO tenemos el ID fácil y creamos la invitación solo con Email.
                     this.logger.log(`Usuario existente detectado para ${email}. Path B.`);
                 } else {
                     throw createError;
                 }
             } else {
                 isNewUser = true;
+                if (!newUser.user) throw new InternalServerErrorException('User created but no user object returned');
                 supabaseUserId = newUser.user.id;
 
                 // Crear Profile local inmediatamente
                 const profile = this.profileRepository.create({
                     id: supabaseUserId,
-                    fullName: 'Invited Athlete', // Placeholder
-                    // avatarUrl: ...
+                    fullName: 'Invited Athlete',
                 });
                 await this.profileRepository.save(profile);
 
                 this.logger.log(`Usuario nuevo creado ${supabaseUserId}. Path A.`);
-                this.logger.warn(`CREDENCIALES TEMPORALES (MOCK EMAIL): Email: ${email}, Password: ${tempPassword}`);
             }
 
         } catch (error) {
@@ -105,7 +103,6 @@ export class InvitationsService {
         }
 
         // 2. Crear Invitación
-        // Verificamos si ya existe una invitación PENDIENTE para este email y box
         const existingInvite = await this.invitationRepository.findOne({
             where: { email, box_id: boxId, status: InvitationStatus.PENDING }
         });
@@ -117,21 +114,59 @@ export class InvitationsService {
         const invitation = this.invitationRepository.create({
             box_id: boxId,
             email: email,
-            user_id: supabaseUserId ?? null, // Explicitly allow null
+            user_id: supabaseUserId ?? null,
             status: InvitationStatus.PENDING
         });
 
         const savedInvitation = await this.invitationRepository.save(invitation);
 
-        // 3. Respuesta
+        // 3. Enviar Email (Resend)
+        await this.sendInvitationEmail(email, isNewUser, tempPassword);
+
+        // 4. Respuesta
         return {
             status: 'success',
             path: isNewUser ? 'A (New User)' : 'B (Existing User)',
             invitation: savedInvitation,
-            message: isNewUser
-                ? 'User created and invited. Check logs for temp credentials.'
-                : 'Invitation sent to existing user.'
+            message: 'Invitation email sent.'
         };
+    }
+
+    private async sendInvitationEmail(to: string, isNewUser: boolean, tempPassword?: string) {
+        if (!this.resend) {
+            this.logger.warn(`Resend not configured. Simulated email to ${to}. New User: ${isNewUser}. Pass: ${tempPassword}`);
+            return;
+        }
+
+        const subject = isNewUser
+            ? 'Bienvenido a Fitness Booking App'
+            : 'Has sido invitado a un nuevo Box';
+
+        const html = isNewUser
+            ? `<p>Hola!</p>
+               <p>Has sido invitado a unirte a Fitness Booking App.</p>
+               <p>Tus credenciales temporales son:</p>
+               <ul>
+                 <li><strong>Email:</strong> ${to}</li>
+                 <li><strong>Contraseña:</strong> ${tempPassword}</li>
+               </ul>
+               <p>Por favor, inicia sesión y cambia tu contraseña.</p>`
+            : `<p>Hola!</p>
+               <p>Has sido invitado a unirte a un nuevo Box en Fitness Booking App.</p>
+               <p>Abre la aplicación para aceptar la invitación.</p>`;
+
+        try {
+            await this.resend.emails.send({
+                from: 'onboarding@resend.dev',
+                to: to,
+                subject: subject,
+                html: html
+            });
+            this.logger.log(`Email sent to ${to}`);
+        } catch (error) {
+            this.logger.error(`Error sending email to ${to}`, error);
+            // No lanzamos error para no romper el flujo principal, pero logueamos
+        }
     }
 
     async findAllByBox(boxId: string) {
