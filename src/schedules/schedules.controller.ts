@@ -63,15 +63,15 @@ export class SchedulesController {
     }
 
     // CANCEL (Lógica de negocio)
-    @Post(':id/cancel')
-    cancel(@Param('id') id: string, @Body() body: { reason: string }) {
-        return this.schedulesService.cancel(id, body.reason);
+    @Post('cancel')
+    cancel(@Body() body: { ids: string[], reason: string }) {
+        return this.schedulesService.cancel(body.ids, body.reason);
     }
 
     // REACTIVATE (Lógica de negocio)
-    @Post(':id/reactivate')
-    reactivate(@Param('id') id: string) {
-        return this.schedulesService.reactivate(id);
+    @Post('reactivate')
+    reactivate(@Body() body: { ids: string[] }) {
+        return this.schedulesService.reactivate(body.ids);
     }
 
     // PUBLISH WEEK (publicar una semana)

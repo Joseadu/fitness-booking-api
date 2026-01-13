@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, In } from 'typeorm';
 import { Schedule } from './entities/schedule.entity';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { ScheduleResponseDto } from './dto/schedule-response.dto';
@@ -237,29 +237,32 @@ export class SchedulesService {
     }
 
     // CANCEL
-    async cancel(id: string, reason: string) {
-        const schedule = await this.scheduleRepository.findOne({ where: { id } });
-        if (!schedule) throw new NotFoundException('Clase no encontrada');
+    async cancel(ids: string[], reason: string) {
+        if (!ids || ids.length === 0) return;
 
-        schedule.isCancelled = true;
-        schedule.cancellationReason = reason; // Entity property is cancellationReason, not cancelReason (check entity)
-        // Entity: @Column('text', { name: 'cancellation_reason', nullable: true }) cancellationReason: string;
-        // User snippet used cancelReason, but entity has cancellationReason. Adjusted.
-        schedule.isVisible = false;
-
-        return this.scheduleRepository.save(schedule);
+        // Bulk Update
+        await this.scheduleRepository.update(
+            { id: In(ids) },
+            {
+                isCancelled: true,
+                cancellationReason: reason,
+                isVisible: false
+            }
+        );
     }
 
     // REACTIVATE
-    async reactivate(id: string) {
-        const schedule = await this.scheduleRepository.findOne({ where: { id } });
-        if (!schedule) throw new NotFoundException('Clase no encontrada');
+    async reactivate(ids: string[]) {
+        if (!ids || ids.length === 0) return;
 
-        schedule.isCancelled = false;
-        schedule.cancellationReason = null;
-        schedule.isVisible = true; // Al reactivar, la hacemos visible
-
-        return this.scheduleRepository.save(schedule);
+        await this.scheduleRepository.update(
+            { id: In(ids) },
+            {
+                isCancelled: false,
+                cancellationReason: null,
+                isVisible: true
+            }
+        );
     }
 
     // HELPER (Si no lo tienes ya, úsalo en findAll y findOne)
