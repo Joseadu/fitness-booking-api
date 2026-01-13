@@ -10,24 +10,26 @@ export class MembershipsService {
         private readonly membershipRepository: Repository<BoxMembership>,
     ) { }
 
+    /**
+     * Get all memberships for a specific user
+     */
     async findAllByUser(userId: string): Promise<BoxMembership[]> {
         return this.membershipRepository.find({
-            where: {
-                user_id: userId,
-                is_active: true,
-            },
+            where: { user_id: userId },
             relations: ['box'],
         });
     }
 
-    async findOneByBox(userId: string, boxId: string): Promise<BoxMembership> {
+    /**
+     * Find specific membership
+     */
+    async checkMembership(userId: string, boxId: string): Promise<BoxMembership> {
         const membership = await this.membershipRepository.findOne({
             where: {
                 user_id: userId,
-                box_id: boxId,
-                is_active: true,
+                box_id: boxId
             },
-            relations: ['box'],
+            relations: ['box']
         });
 
         if (!membership) {

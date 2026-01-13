@@ -71,7 +71,10 @@ export class InvitationsService {
                 email: email,
                 password: tempPassword,
                 email_confirm: true, // Auto-confirmar
-                user_metadata: { mustChangePassword: true }
+                user_metadata: {
+                    mustChangePassword: true,
+                    role: 'athlete' // IMPORTANTE: Forzar rol de atleta
+                }
             });
 
             if (createError) {
