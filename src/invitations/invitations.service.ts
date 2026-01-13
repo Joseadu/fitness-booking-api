@@ -174,7 +174,10 @@ export class InvitationsService {
 
     async findAllByBox(boxId: string) {
         return this.invitationRepository.find({
-            where: { box_id: boxId },
+            where: {
+                box_id: boxId,
+                status: InvitationStatus.PENDING
+            },
             order: { created_at: 'DESC' }
         });
     }
