@@ -37,7 +37,20 @@ export class InvitationsController {
         return this.invitationsService.accept(id, req.user.userId);
     }
 
-    // POST /invitations/accept-mine (Nuevo Endpoint)
+    // GET /invitations/my-pending (For future notification panel)
+    @Get('invitations/my-pending')
+    getMyPending(@Request() req) {
+        return this.invitationsService.findPendingByEmail(req.user.email);
+    }
+
+    // POST /invitations/:id/reject (For future notification panel)
+    @Post('invitations/:id/reject')
+    reject(@Param('id') id: string, @Request() req) {
+        return this.invitationsService.reject(id, req.user.userId);
+    }
+
+    // DEPRECATED: Will be removed in future version
+    // Use email link flow instead
     @Post('invitations/accept-mine')
     acceptMine(@Request() req) {
         return this.invitationsService.acceptPendingInvitations(req.user.userId, req.user.email);

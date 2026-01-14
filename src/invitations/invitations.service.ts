@@ -136,7 +136,7 @@ export class InvitationsService {
         // 3. Enviar Email (Resend)
         const box = await this.boxRepository.findOne({ where: { id: boxId } });
         const boxName = box?.name || 'un gimnasio';
-        await this.sendInvitationEmail(email, isNewUser, boxName, tempPassword);
+        await this.sendInvitationEmail(email, isNewUser, boxName, savedInvitation.id, tempPassword);
 
         // 4. Respuesta
         return {
@@ -147,11 +147,14 @@ export class InvitationsService {
         };
     }
 
-    private async sendInvitationEmail(to: string, isNewUser: boolean, boxName: string, tempPassword?: string) {
+    private async sendInvitationEmail(to: string, isNewUser: boolean, boxName: string, invitationId: string, tempPassword?: string) {
         if (!this.resend) {
             this.logger.warn(`Resend not configured. Simulated email to ${to}. New User: ${isNewUser}. Pass: ${tempPassword}`);
             return;
         }
+
+        const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:4200';
+        const acceptLink = `${frontendUrl}/accept-invitation?id=${invitationId}`;
 
         const subject = isNewUser
             ? 'Bienvenido a Fitness Booking - Tus credenciales'
@@ -167,7 +170,10 @@ export class InvitationsService {
                <p>Por favor, inicia sesión y cambia tu contraseña.</p>`
             : `<p>¡Hola!</p>
                <p>Has sido invitado a unirte a <strong>${boxName}</strong> en Fitness Booking App.</p>
-               <p>Abre la aplicación para aceptar la invitación y empezar a entrenar.</p>`;
+               <p>Haz clic en el siguiente enlace para aceptar la invitación:</p>
+               <p><a href="${acceptLink}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">Aceptar Invitación</a></p>
+               <p>O copia y pega este enlace en tu navegador:</p>
+               <p style="color: #6B7280; font-size: 14px;">${acceptLink}</p>`;
 
         try {
             await this.resend.emails.send({
@@ -206,8 +212,14 @@ export class InvitationsService {
         if (!invitation) throw new NotFoundException('Invitation not found');
         if (invitation.status !== InvitationStatus.PENDING) throw new BadRequestException('Invitation is not pending');
 
-        // Validar que el usuario que acepta es el del email (Opcional, pero recomendable)
-        // Como no tenemos el email del usuario en el request fácilmente, confiamos en que tiene la ID de la invitación.
+        // CRITICAL: Validate that the logged-in user is the one invited
+        if (!invitation.user_id) {
+            throw new BadRequestException('Invitation is not linked to a user. Cannot accept.');
+        }
+
+        if (invitation.user_id !== userId) {
+            throw new BadRequestException('You cannot accept an invitation that was not sent to you.');
+        }
 
         // Transaction
         const queryRunner = this.dataSource.createQueryRunner();
@@ -215,22 +227,40 @@ export class InvitationsService {
         await queryRunner.startTransaction();
 
         try {
-            // 1. Actualizar Invitación
+            // 1. Verificar si ya existe membership (idempotencia)
+            const existingMembership = await queryRunner.manager.findOne(BoxMembership, {
+                where: {
+                    user_id: invitation.user_id, // Use invitation's user_id
+                    box_id: invitation.box_id
+                }
+            });
+
+            if (existingMembership) {
+                // Ya existe membership → solo marcar invitación como aceptada
+                invitation.status = InvitationStatus.ACCEPTED;
+                invitation.updated_at = new Date();
+                await queryRunner.manager.save(invitation);
+                await queryRunner.commitTransaction();
+
+                this.logger.log(`Membership already exists for user ${invitation.user_id} in box ${invitation.box_id}. Invitation marked as accepted.`);
+                return { message: 'Invitation accepted (membership already exists)', membership: existingMembership };
+            }
+
+            // 2. Actualizar Invitación
             invitation.status = InvitationStatus.ACCEPTED;
-            invitation.user_id = userId; // Vinculamos definitivamente
             invitation.updated_at = new Date(); // Force update time
             await queryRunner.manager.save(invitation);
 
-            // 2. Crear Membresía
+            // 3. Crear Membresía (usando el user_id de la invitación)
             const membership = queryRunner.manager.create(BoxMembership, {
-                user_id: userId,
+                user_id: invitation.user_id, // CRITICAL: Use invitation's user_id, not JWT userId
                 box_id: invitation.box_id,
                 role: 'athlete',
                 is_active: true
             });
             await queryRunner.manager.save(membership);
 
-            // 3. Commit
+            // 4. Commit
             await queryRunner.commitTransaction();
 
             return { message: 'Invitation accepted and membership created', membership };
@@ -272,6 +302,39 @@ export class InvitationsService {
         }
 
         return { message: 'Processed', count: results.length, results };
+    }
+
+    /**
+     * Find pending invitations for a user (for notification panel)
+     */
+    async findPendingByEmail(email: string) {
+        return this.invitationRepository.find({
+            where: {
+                email: email,
+                status: InvitationStatus.PENDING
+            },
+            relations: ['box'],
+            order: { created_at: 'DESC' }
+        });
+    }
+
+    /**
+     * Reject an invitation (for notification panel)
+     */
+    async reject(id: string, userId: string): Promise<any> {
+        const invitation = await this.invitationRepository.findOne({ where: { id } });
+
+        if (!invitation) throw new NotFoundException('Invitation not found');
+        if (invitation.status !== InvitationStatus.PENDING) {
+            throw new BadRequestException('Invitation is not pending');
+        }
+
+        // Update status to rejected
+        invitation.status = InvitationStatus.REJECTED;
+        invitation.updated_at = new Date();
+        await this.invitationRepository.save(invitation);
+
+        return { message: 'Invitation rejected' };
     }
 
     private generateTempPassword(): string {
