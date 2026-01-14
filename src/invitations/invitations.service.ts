@@ -81,7 +81,17 @@ export class InvitationsService {
                 // Si el error es "User already registered", es Path B.
                 if (createError.message.includes('already has been registered') || createError.status === 422) {
                     isNewUser = false;
-                    this.logger.log(`Usuario existente detectado para ${email}. Path B.`);
+
+                    // Path B: Buscar el usuario existente para obtener su ID
+                    const { data: listData } = await this.supabaseAdmin.auth.admin.listUsers();
+                    const existingUser = listData?.users?.find(u => u.email === email);
+
+                    if (existingUser) {
+                        supabaseUserId = existingUser.id;
+                        this.logger.log(`Usuario existente detectado: ${email} (ID: ${supabaseUserId}). Path B.`);
+                    } else {
+                        this.logger.warn(`Usuario existente pero no encontrado en listUsers: ${email}`);
+                    }
                 } else {
                     throw createError;
                 }
@@ -124,7 +134,9 @@ export class InvitationsService {
         const savedInvitation = await this.invitationRepository.save(invitation);
 
         // 3. Enviar Email (Resend)
-        await this.sendInvitationEmail(email, isNewUser, tempPassword);
+        const box = await this.boxRepository.findOne({ where: { id: boxId } });
+        const boxName = box?.name || 'un gimnasio';
+        await this.sendInvitationEmail(email, isNewUser, boxName, tempPassword);
 
         // 4. Respuesta
         return {
@@ -135,28 +147,27 @@ export class InvitationsService {
         };
     }
 
-    private async sendInvitationEmail(to: string, isNewUser: boolean, tempPassword?: string) {
+    private async sendInvitationEmail(to: string, isNewUser: boolean, boxName: string, tempPassword?: string) {
         if (!this.resend) {
             this.logger.warn(`Resend not configured. Simulated email to ${to}. New User: ${isNewUser}. Pass: ${tempPassword}`);
             return;
         }
 
         const subject = isNewUser
-            ? 'Bienvenido a Fitness Booking App'
-            : 'Has sido invitado a un nuevo Box';
+            ? 'Bienvenido a Fitness Booking - Tus credenciales'
+            : `Has sido invitado a ${boxName}`;
 
         const html = isNewUser
-            ? `<p>Hola!</p>
-               <p>Has sido invitado a unirte a Fitness Booking App.</p>
+            ? `<p>Has sido invitado a unirte a <strong>${boxName}</strong> en Fitness Booking App.</p>
                <p>Tus credenciales temporales son:</p>
                <ul>
                  <li><strong>Email:</strong> ${to}</li>
                  <li><strong>Contraseña:</strong> ${tempPassword}</li>
                </ul>
                <p>Por favor, inicia sesión y cambia tu contraseña.</p>`
-            : `<p>Hola!</p>
-               <p>Has sido invitado a unirte a un nuevo Box en Fitness Booking App.</p>
-               <p>Abre la aplicación para aceptar la invitación.</p>`;
+            : `<p>¡Hola!</p>
+               <p>Has sido invitado a unirte a <strong>${boxName}</strong> en Fitness Booking App.</p>
+               <p>Abre la aplicación para aceptar la invitación y empezar a entrenar.</p>`;
 
         try {
             await this.resend.emails.send({
@@ -256,7 +267,7 @@ export class InvitationsService {
                 const res = await this.accept(invitation.id, userId);
                 results.push(res);
             } catch (error) {
-                console.error(`Failed to accept invitation ${invitation.id}`, error);
+                this.logger.error(`Failed to accept invitation ${invitation.id}`, error);
             }
         }
 
