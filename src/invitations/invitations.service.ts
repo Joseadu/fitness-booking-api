@@ -8,6 +8,7 @@ import { Resend } from 'resend';
 
 import { Invitation, InvitationStatus } from './entities/invitation.entity';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
+import { InvitationErrorCode } from './dto/invitation-error.dto';
 import { Profile } from '../users/entities/profile.entity';
 import { BoxMembership } from '../memberships/entities/box-membership.entity';
 import { Box } from '../boxes/entities/box.entity';
@@ -69,9 +70,11 @@ export class InvitationsService {
                 });
 
                 if (existingMembership) {
-                    throw new BadRequestException(
-                        `El usuario ${email} ya es miembro de este box.`
-                    );
+                    throw new BadRequestException({
+                        statusCode: 400,
+                        error: InvitationErrorCode.ALREADY_MEMBER,
+                        message: 'El usuario ya es miembro de este box.'
+                    });
                 }
 
                 // User exists but not a member → Path B
@@ -125,7 +128,11 @@ export class InvitationsService {
         });
 
         if (existingInvite) {
-            throw new BadRequestException('Este usuario ya tiene una invitación pendiente.');
+            throw new BadRequestException({
+                statusCode: 400,
+                error: InvitationErrorCode.PENDING_INVITATION,
+                message: 'Este usuario ya tiene una invitación pendiente.'
+            });
         }
 
         const invitation = this.invitationRepository.create({
@@ -142,12 +149,23 @@ export class InvitationsService {
         const boxName = box?.name || 'un gimnasio';
         await this.sendInvitationEmail(email, isNewUser, boxName, savedInvitation.id, tempPassword);
 
-        // 4. Respuesta
+        // 4. Return standardized response
         return {
-            status: 'success',
-            path: isNewUser ? 'A (New User)' : 'B (Existing User)',
-            invitation: savedInvitation,
-            message: 'Invitation email sent.'
+            success: true,
+            data: {
+                invitation: {
+                    id: savedInvitation.id,
+                    email: savedInvitation.email,
+                    status: savedInvitation.status,
+                    boxId: savedInvitation.box_id,
+                    createdAt: savedInvitation.created_at
+                },
+                path: isNewUser ? 'new_user' : 'existing_user',
+                emailSent: true
+            },
+            message: isNewUser
+                ? 'Invitación enviada. Se ha creado una cuenta nueva para el usuario.'
+                : 'Invitación enviada. El usuario recibirá un enlace para unirse.'
         };
     }
 
@@ -247,7 +265,20 @@ export class InvitationsService {
                 await queryRunner.commitTransaction();
 
                 this.logger.log(`Membership already exists for user ${invitation.user_id} in box ${invitation.box_id}. Invitation marked as accepted.`);
-                return { message: 'Invitation accepted (membership already exists)', membership: existingMembership };
+                return {
+                    success: true,
+                    data: {
+                        membership: {
+                            id: existingMembership.id,
+                            userId: existingMembership.user_id,
+                            boxId: existingMembership.box_id,
+                            role: existingMembership.role,
+                            isActive: existingMembership.is_active
+                        },
+                        alreadyExisted: true
+                    },
+                    message: 'Ya eres miembro de este box.'
+                };
             }
 
             // 2. Actualizar Invitación
@@ -267,7 +298,20 @@ export class InvitationsService {
             // 4. Commit
             await queryRunner.commitTransaction();
 
-            return { message: 'Invitation accepted and membership created', membership };
+            return {
+                success: true,
+                data: {
+                    membership: {
+                        id: membership.id,
+                        userId: membership.user_id,
+                        boxId: membership.box_id,
+                        role: membership.role,
+                        isActive: membership.is_active
+                    },
+                    alreadyExisted: false
+                },
+                message: 'Invitación aceptada correctamente. ¡Bienvenido al box!'
+            };
 
         } catch (err) {
             await queryRunner.rollbackTransaction();
