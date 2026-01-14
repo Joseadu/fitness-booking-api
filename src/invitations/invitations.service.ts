@@ -50,57 +50,57 @@ export class InvitationsService {
     async create(boxId: string, createInvitationDto: CreateInvitationDto) {
         const { email } = createInvitationDto;
 
-        // 1. Validar si ya es miembro
-        const existingMember = await this.membershipRepository.createQueryBuilder('membership')
-            .leftJoin('membership.profile', 'profile')
-            // TODO: Mejorar búsqueda de usuario existente
-            .getOne();
-
         let supabaseUserId: string | null = null;
         let isNewUser = false;
         let tempPassword = '';
 
         try {
-            // Verificar si el usuario existe en Supabase
-            // ... (Lógica de Supabase existente) ...
+            // 1. Check if user exists in Supabase and get their ID
+            const { data: listData } = await this.supabaseAdmin.auth.admin.listUsers();
+            const existingUser = listData?.users?.find(u => u.email === email);
 
-            // INTENTO PATH A (Crear Usuario)
-            tempPassword = this.generateTempPassword();
-
-            const { data: newUser, error: createError } = await this.supabaseAdmin.auth.admin.createUser({
-                email: email,
-                password: tempPassword,
-                email_confirm: true, // Auto-confirmar
-                user_metadata: {
-                    mustChangePassword: true,
-                    role: 'athlete' // IMPORTANTE: Forzar rol de atleta
-                }
-            });
-
-            if (createError) {
-                // Si el error es "User already registered", es Path B.
-                if (createError.message.includes('already has been registered') || createError.status === 422) {
-                    isNewUser = false;
-
-                    // Path B: Buscar el usuario existente para obtener su ID
-                    const { data: listData } = await this.supabaseAdmin.auth.admin.listUsers();
-                    const existingUser = listData?.users?.find(u => u.email === email);
-
-                    if (existingUser) {
-                        supabaseUserId = existingUser.id;
-                        this.logger.log(`Usuario existente detectado: ${email} (ID: ${supabaseUserId}). Path B.`);
-                    } else {
-                        this.logger.warn(`Usuario existente pero no encontrado en listUsers: ${email}`);
+            if (existingUser) {
+                // User exists → Check if already a member of THIS box
+                const existingMembership = await this.membershipRepository.findOne({
+                    where: {
+                        user_id: existingUser.id,
+                        box_id: boxId
                     }
-                } else {
+                });
+
+                if (existingMembership) {
+                    throw new BadRequestException(
+                        `El usuario ${email} ya es miembro de este box.`
+                    );
+                }
+
+                // User exists but not a member → Path B
+                isNewUser = false;
+                supabaseUserId = existingUser.id;
+                this.logger.log(`Usuario existente detectado: ${email} (ID: ${supabaseUserId}). Path B.`);
+            } else {
+                // User doesn't exist → Path A (create new user)
+                tempPassword = this.generateTempPassword();
+
+                const { data: newUser, error: createError } = await this.supabaseAdmin.auth.admin.createUser({
+                    email: email,
+                    password: tempPassword,
+                    email_confirm: true,
+                    user_metadata: {
+                        mustChangePassword: true,
+                        role: 'athlete'
+                    }
+                });
+
+                if (createError) {
                     throw createError;
                 }
-            } else {
+
                 isNewUser = true;
                 if (!newUser.user) throw new InternalServerErrorException('User created but no user object returned');
                 supabaseUserId = newUser.user.id;
 
-                // Crear Profile local inmediatamente
+                // Create Profile locally
                 const profile = this.profileRepository.create({
                     id: supabaseUserId,
                     fullName: 'Invited Athlete',
@@ -111,17 +111,21 @@ export class InvitationsService {
             }
 
         } catch (error) {
+            // Re-throw BadRequestException as-is (for frontend to catch)
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
             this.logger.error('Error gestionando usuario en Supabase', error);
             throw new InternalServerErrorException('Error inviting user');
         }
 
-        // 2. Crear Invitación
+        // 2. Check for existing pending invitation
         const existingInvite = await this.invitationRepository.findOne({
             where: { email, box_id: boxId, status: InvitationStatus.PENDING }
         });
 
         if (existingInvite) {
-            throw new BadRequestException('User already has a pending invitation for this box');
+            throw new BadRequestException('Este usuario ya tiene una invitación pendiente.');
         }
 
         const invitation = this.invitationRepository.create({
