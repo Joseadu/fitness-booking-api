@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, In } from 'typeorm';
 import { Schedule } from './entities/schedule.entity';
@@ -33,40 +33,41 @@ export class SchedulesService {
 
         const schedules = await this.scheduleRepository.find({
             where,
-            relations: ['discipline', 'bookings'],
+            relations: ['discipline', 'bookings', 'bookings.athlete'],
             order: { date: 'ASC', startTime: 'ASC' },
         });
 
         return schedules.map(schedule => {
-            const confirmedBookings = schedule.bookings ? schedule.bookings.filter(b => b.status === 'active') : [];
+            const confirmedBookings = schedule.bookings ? schedule.bookings.filter(b => b.status === 'confirmed') : [];
             const count = confirmedBookings.length;
-            const userHasBooked = confirmedBookings.some(b => b.athleteId === userId);
+            const userBooking = confirmedBookings.find(b => b.athleteId === userId);
+            const userHasBooked = !!userBooking;
 
-            // Mapeo explicito para asegurar CamelCase en frontend
             return {
                 id: schedule.id,
                 date: schedule.date,
                 startTime: schedule.startTime,
                 endTime: schedule.endTime,
-                // Asegurar booleans (por si viene snake_case de DB cruda)
                 isVisible: (schedule as any).isVisible ?? (schedule as any).is_visible ?? true,
                 isCancelled: (schedule as any).isCancelled ?? (schedule as any).is_cancelled ?? false,
                 cancelReason: schedule.cancellationReason || undefined,
-
-                // Capacidad segura
                 capacity: (schedule as any).maxCapacity ?? (schedule as any).max_capacity ?? 15,
                 maxCapacity: (schedule as any).maxCapacity ?? (schedule as any).max_capacity ?? 15,
-
                 currentBookings: count,
                 spotsAvailable: Math.max(0, ((schedule as any).maxCapacity || 15) - count),
                 userHasBooked: userHasBooked,
-
+                userBookingId: userBooking?.id,
                 discipline: {
                     id: schedule.discipline?.id,
                     name: schedule.discipline?.name,
                     color: schedule.discipline?.color
                 },
                 coach: schedule.trainerId ? { id: schedule.trainerId, name: 'Coach' } : undefined,
+                bookings: confirmedBookings.map(booking => ({
+                    id: booking.athlete?.id,
+                    fullName: booking.athlete?.fullName,
+                    avatarUrl: booking.athlete?.avatarUrl
+                }))
             };
         });
     }
@@ -147,7 +148,7 @@ export class SchedulesService {
             where: {
                 scheduleId,
                 athleteId: userId,
-                status: 'active'
+                status: 'confirmed'
             }
         });
 
@@ -165,7 +166,7 @@ export class SchedulesService {
         const bookings = await bookingRepo.find({
             where: {
                 athleteId: userId,
-                // status: 'active' // Descomenta si usas status
+                status: 'confirmed'
             },
             relations: ['schedule', 'schedule.discipline'], // Join con Schedule y Discipline
             order: {
@@ -307,4 +308,38 @@ export class SchedulesService {
             { isVisible: true }
         );
     }
+
+    //BOOKIN
+    async bookClass(scheduleId: string, userId: string): Promise<void> {
+        // 1. Obtener la clase
+        const schedule = await this.scheduleRepository.findOne({
+            where: { id: scheduleId },
+            relations: ['bookings']
+        });
+        if (!schedule) throw new NotFoundException('Clase no encontrada');
+        if (schedule.isCancelled) throw new BadRequestException('La clase está cancelada');
+        // 2. Usar el repositorio de Booking (igual que haces en unsubscribe)
+        const bookingRepo = this.scheduleRepository.manager.getRepository(Booking);
+        // 3. Comprobar si ya tiene reserva activa (evitar duplicados)
+        const existing = await bookingRepo.findOne({
+            where: {
+                scheduleId,
+                athleteId: userId,
+                status: 'confirmed'
+            }
+        });
+        if (existing) {
+            // Ya tiene reserva, no hacemos nada (idempotente)
+            return;
+        }
+        // 4. Crear la reserva
+        const booking = bookingRepo.create({
+            scheduleId,
+            athleteId: userId,
+            status: 'confirmed',
+            createdAt: new Date()
+        });
+        await bookingRepo.save(booking);
+    }
+
 }

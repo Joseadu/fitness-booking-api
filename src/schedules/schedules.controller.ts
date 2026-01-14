@@ -79,4 +79,10 @@ export class SchedulesController {
     publishWeek(@Body() body: { boxId: string, weekStart: string }) {
         return this.schedulesService.publishWeek(body.boxId, body.weekStart);
     }
+
+    // POST /schedules/:id/booking (FALTA ESTE)
+    @Post(':id/booking')
+    bookClass(@Param('id') scheduleId: string, @Request() req) {
+        return this.schedulesService.bookClass(scheduleId, req.user.userId);
+    }
 }
