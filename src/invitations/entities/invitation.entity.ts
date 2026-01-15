@@ -34,6 +34,9 @@ export class Invitation {
     @Column('text', { default: InvitationStatus.PENDING })
     status: InvitationStatus;
 
+    @Column({ type: 'uuid', nullable: true, unique: true })
+    token: string | null;
+
     @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     created_at: Date;
 

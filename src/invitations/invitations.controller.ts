@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request } from '
 import { InvitationsService } from './invitations.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Public } from '../auth/public.decorator';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -54,5 +55,18 @@ export class InvitationsController {
     @Post('invitations/accept-mine')
     acceptMine(@Request() req) {
         return this.invitationsService.acceptPendingInvitations(req.user.userId, req.user.email);
+    }
+    // Public endpoint to validate setup token
+    @Public()
+    @Get('invitations/validate-token/:token')
+    validateToken(@Param('token') token: string) {
+        return this.invitationsService.validateToken(token);
+    }
+
+    // Public endpoint to complete setup (set password + accept invite)
+    @Public()
+    @Post('invitations/setup-account')
+    setupAccount(@Body() body: { token: string; password: string }) {
+        return this.invitationsService.setupAccount(body.token, body.password);
     }
 }

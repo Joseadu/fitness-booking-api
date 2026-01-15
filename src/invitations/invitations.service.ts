@@ -77,41 +77,15 @@ export class InvitationsService {
                     });
                 }
 
-                // User exists but not a member → Path B
+                // User exists but not a member → Path B (Existing User)
                 isNewUser = false;
                 supabaseUserId = existingUser.id;
                 this.logger.log(`Usuario existente detectado: ${email} (ID: ${supabaseUserId}). Path B.`);
+
+                return this.handlePathBInvitation(boxId, email, supabaseUserId);
             } else {
-                // User doesn't exist → Path A (create new user)
-                tempPassword = this.generateTempPassword();
-
-                const { data: newUser, error: createError } = await this.supabaseAdmin.auth.admin.createUser({
-                    email: email,
-                    password: tempPassword,
-                    email_confirm: true,
-                    user_metadata: {
-                        mustChangePassword: true,
-                        role: 'athlete'
-                    }
-                });
-
-                if (createError) {
-                    throw createError;
-                }
-
-                isNewUser = true;
-                if (!newUser.user) throw new InternalServerErrorException('User created but no user object returned');
-                supabaseUserId = newUser.user.id;
-
-                // Create Profile locally
-                const emailUsername = email.split('@')[0];
-                const profile = this.profileRepository.create({
-                    id: supabaseUserId,
-                    fullName: emailUsername,
-                });
-                await this.profileRepository.save(profile);
-
-                this.logger.log(`Usuario nuevo creado ${supabaseUserId}. Path A.`);
+                // User doesn't exist → Path A (New User - Setup Flow)
+                return this.handlePathAInvitation(boxId, email);
             }
 
         } catch (error) {
@@ -123,80 +97,62 @@ export class InvitationsService {
             throw new InternalServerErrorException('Error inviting user');
         }
 
-        // 2. Check for existing pending invitation
-        const existingInvite = await this.invitationRepository.findOne({
-            where: { email, box_id: boxId, status: InvitationStatus.PENDING }
-        });
 
-        if (existingInvite) {
-            throw new BadRequestException({
-                statusCode: 400,
-                error: InvitationErrorCode.PENDING_INVITATION,
-                message: 'Este usuario ya tiene una invitación pendiente.'
-            });
-        }
 
-        const invitation = this.invitationRepository.create({
-            box_id: boxId,
-            email: email,
-            user_id: supabaseUserId ?? null,
-            status: InvitationStatus.PENDING
-        });
 
-        const savedInvitation = await this.invitationRepository.save(invitation);
 
-        // 3. Enviar Email (Resend)
-        const box = await this.boxRepository.findOne({ where: { id: boxId } });
-        const boxName = box?.name || 'un gimnasio';
-        await this.sendInvitationEmail(email, isNewUser, boxName, savedInvitation.id, tempPassword);
 
-        // 4. Return standardized response
-        return {
-            success: true,
-            data: {
-                invitation: {
-                    id: savedInvitation.id,
-                    email: savedInvitation.email,
-                    status: savedInvitation.status,
-                    boxId: savedInvitation.box_id,
-                    createdAt: savedInvitation.created_at
-                },
-                path: isNewUser ? 'new_user' : 'existing_user',
-                emailSent: true
-            },
-            message: isNewUser
-                ? 'Invitación enviada. Se ha creado una cuenta nueva para el usuario.'
-                : 'Invitación enviada. El usuario recibirá un enlace para unirse.'
-        };
     }
 
-    private async sendInvitationEmail(to: string, isNewUser: boolean, boxName: string, invitationId: string, tempPassword?: string) {
+    private async sendInvitationEmail(to: string, isNewUser: boolean, boxName: string, invitationId: string, tempPassword?: string, token?: string) {
         if (!this.resend) {
-            this.logger.warn(`Resend not configured. Simulated email to ${to}. New User: ${isNewUser}. Pass: ${tempPassword}`);
+            this.logger.warn(`Resend not configured. Simulated email to ${to}. New User: ${isNewUser}. Token: ${token}`);
             return;
         }
 
         const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:4200';
-        const acceptLink = `${frontendUrl}/accept-invitation?id=${invitationId}`;
+
+        // Link logic
+        let actionLink = '';
+        if (isNewUser && token) {
+            // Path A: Setup Account
+            actionLink = `${frontendUrl}/setup-account?token=${token}`;
+        } else {
+            // Path B: Accept Invitation
+            actionLink = `${frontendUrl}/accept-invitation?id=${invitationId}`;
+        }
 
         const subject = isNewUser
-            ? 'Bienvenido a Fitness Booking - Tus credenciales'
+            ? `Únete a ${boxName} - Configura tu cuenta`
             : `Has sido invitado a ${boxName}`;
 
         const html = isNewUser
-            ? `<p>Has sido invitado a unirte a <strong>${boxName}</strong> en Fitness Booking App.</p>
-               <p>Tus credenciales temporales son:</p>
-               <ul>
-                 <li><strong>Email:</strong> ${to}</li>
-                 <li><strong>Contraseña:</strong> ${tempPassword}</li>
-               </ul>
-               <p>Por favor, inicia sesión y cambia tu contraseña.</p>`
-            : `<p>¡Hola!</p>
-               <p>Has sido invitado a unirte a <strong>${boxName}</strong> en Fitness Booking App.</p>
-               <p>Haz clic en el siguiente enlace para aceptar la invitación:</p>
-               <p><a href="${acceptLink}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">Aceptar Invitación</a></p>
-               <p>O copia y pega este enlace en tu navegador:</p>
-               <p style="color: #6B7280; font-size: 14px;">${acceptLink}</p>`;
+            ? `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2>¡Bienvenido a ${boxName}!</h2>
+                    <p>Has sido invitado a unirte a nuestro box en Fitness Booking App.</p>
+                    <p>Para comenzar, por favor configura tu contraseña haciendo clic en el siguiente enlace:</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${actionLink}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                            Configurar mi Cuenta
+                        </a>
+                    </div>
+                    <p style="color: #666; font-size: 14px;">O copia este enlace: <br> ${actionLink}</p>
+                    <p>Una vez configurada tu cuenta, tendrás acceso inmediato al box.</p>
+                </div>
+            `
+            : `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2>¡Hola!</h2>
+                    <p>Has sido invitado a unirte a <strong>${boxName}</strong>.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${actionLink}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                            Aceptar Invitación
+                        </a>
+                    </div>
+                    <p style="color: #666; font-size: 14px;">O copia este enlace: <br> ${actionLink}</p>
+                </div>
+            `;
 
         try {
             await this.resend.emails.send({
@@ -208,7 +164,6 @@ export class InvitationsService {
             this.logger.log(`Email sent to ${to}`);
         } catch (error) {
             this.logger.error(`Error sending email to ${to}`, error);
-            // No lanzamos error para no romper el flujo principal, pero logueamos
         }
     }
 
@@ -388,5 +343,200 @@ export class InvitationsService {
 
     private generateTempPassword(): string {
         return 'fb-' + crypto.randomBytes(4).toString('hex');
+    }
+
+    /**
+     * Handle Path A: New User (Setup Flow with Token)
+     */
+    private async handlePathAInvitation(boxId: string, email: string) {
+        this.logger.log(`Handling Path A (New User) for ${email} in box ${boxId}`);
+        // 1. Generate random password for Supabase (user will overwrite it later)
+        const randomPassword = crypto.randomBytes(16).toString('hex');
+        const token = crypto.randomUUID(); // Setup Token for verification
+
+        // 2. Create User in Supabase
+        const { data: newUser, error: createError } = await this.supabaseAdmin.auth.admin.createUser({
+            email: email,
+            password: randomPassword,
+            email_confirm: true,
+            user_metadata: { mustChangePassword: true, role: 'athlete' }
+        });
+
+        if (createError) {
+            this.logger.error(`Error creating user in Supabase for ${email}`, createError);
+            throw createError;
+        }
+
+        if (!newUser.user) {
+            this.logger.error(`User created but no user object returned for ${email}`);
+            throw new InternalServerErrorException('User created but no user object returned');
+        }
+
+        const supabaseUserId = newUser.user.id;
+        this.logger.log(`Created Supabase user ${supabaseUserId}`);
+
+        // 3. Create Local Profile
+        const emailUsername = email.split('@')[0];
+        const profile = this.profileRepository.create({
+            id: supabaseUserId,
+            fullName: emailUsername,
+        });
+        await this.profileRepository.save(profile);
+
+        // 4. Create Invitation with Token
+        const invitation = this.invitationRepository.create({
+            box: { id: boxId } as Box,
+            email,
+            user_id: supabaseUserId,
+            status: InvitationStatus.PENDING,
+            token: token
+        });
+        const savedInvitation = await this.invitationRepository.save(invitation);
+
+        // 5. Send Setup Email (with Token Link)
+        const box = await this.boxRepository.findOne({ where: { id: boxId } });
+        const boxName = box?.name || 'un gimnasio';
+
+        // Pass token to email service (isNewUser=true -> Setup Email)
+        await this.sendInvitationEmail(email, true, boxName, savedInvitation.id, undefined, token);
+
+        return {
+            success: true,
+            data: {
+                invitation: {
+                    id: savedInvitation.id,
+                    email: savedInvitation.email,
+                    status: savedInvitation.status,
+                    boxId: savedInvitation.box_id,
+                    createdAt: savedInvitation.created_at
+                },
+                path: 'new_user',
+                emailSent: true
+            },
+            message: 'Invitación enviada. El usuario recibirá un enlace para configurar su cuenta.'
+        };
+    }
+
+    /**
+     * Handle Path B: Existing User (Standard Link Flow)
+     */
+    private async handlePathBInvitation(boxId: string, email: string, userId: string) {
+        // 1. Check for existing pending invitation
+        const existingInvite = await this.invitationRepository.findOne({
+            where: { email, box_id: boxId, status: InvitationStatus.PENDING }
+        });
+
+        if (existingInvite) {
+            throw new BadRequestException({
+                statusCode: 400,
+                error: InvitationErrorCode.PENDING_INVITATION,
+                message: 'Este usuario ya tiene una invitación pendiente.'
+            });
+        }
+
+        // 2. Create Invitation (No Token needed for Path B)
+        const invitation = this.invitationRepository.create({
+            box_id: boxId,
+            email: email,
+            user_id: userId,
+            status: InvitationStatus.PENDING
+        });
+        const savedInvitation = await this.invitationRepository.save(invitation);
+
+        // 3. Send Invitation Email (Standard Link)
+        const box = await this.boxRepository.findOne({ where: { id: boxId } });
+        const boxName = box?.name || 'un gimnasio';
+
+        await this.sendInvitationEmail(email, false, boxName, savedInvitation.id);
+
+        return {
+            success: true,
+            data: {
+                invitation: {
+                    id: savedInvitation.id,
+                    email: savedInvitation.email,
+                    status: savedInvitation.status,
+                    boxId: savedInvitation.box_id,
+                    createdAt: savedInvitation.created_at
+                },
+                path: 'existing_user',
+                emailSent: true
+            },
+            message: 'Invitación enviada. El usuario recibirá un enlace para unirse.'
+        };
+    }
+
+    /**
+     * Validate setup token (Front calls this on page load)
+     */
+    async validateToken(token: string) {
+        this.logger.log(`Validating token: ${token}`);
+        const invitation = await this.invitationRepository.findOne({
+            where: { token, status: InvitationStatus.PENDING },
+            relations: ['box']
+        });
+
+        if (!invitation) {
+            this.logger.warn(`Invalid or expired token: ${token}`);
+            throw new NotFoundException('Invalid or expired token');
+        }
+
+        this.logger.log(`Token valid for email: ${invitation.email}`);
+
+        return {
+            valid: true,
+            email: invitation.email,
+            boxName: invitation.box?.name || 'Box',
+            boxId: invitation.box_id
+        };
+    }
+
+    /**
+     * Complete Setup: Set password + Auto-accept invitation
+     */
+    async setupAccount(token: string, password: string) {
+        this.logger.log(`Setting up account with token: ${token}`);
+
+        // 1. Validate Token again
+        const invitation = await this.invitationRepository.findOne({
+            where: { token, status: InvitationStatus.PENDING }
+        });
+
+        if (!invitation || !invitation.user_id) {
+            throw new BadRequestException('Invalid token or invitation');
+        }
+
+        // 2. Update Password in Supabase
+        const { error: updateError } = await this.supabaseAdmin.auth.admin.updateUserById(
+            invitation.user_id,
+            { password: password, email_confirm: true }
+        );
+
+        if (updateError) {
+            this.logger.error(`Failed to update password for user ${invitation.user_id}`, updateError);
+            throw new InternalServerErrorException('Could not set password');
+        }
+
+        // 3. Auto-Accept Invitation (Create Membership)
+        const membership = this.membershipRepository.create({
+            user_id: invitation.user_id,
+            box_id: invitation.box_id,
+            role: 'athlete',
+            is_active: true
+        });
+
+        await this.membershipRepository.save(membership);
+
+        // 4. Mark Invitation as Accepted & Invalidate Token
+        invitation.status = InvitationStatus.ACCEPTED;
+        invitation.token = null; // Invalidate token usage
+        await this.invitationRepository.save(invitation);
+
+        this.logger.log(`Setup complete for user ${invitation.user_id}. Auto-accepted to box ${invitation.box_id}`);
+
+        return {
+            success: true,
+            message: 'Account setup complete. Welcome!'
+        };
     }
 }
