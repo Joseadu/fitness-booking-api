@@ -38,7 +38,11 @@ export class SchedulesService {
         });
 
         return schedules.map(schedule => {
-            const confirmedBookings = schedule.bookings ? schedule.bookings.filter(b => b.status === 'confirmed') : [];
+            const confirmedBookings = schedule.bookings
+                ? schedule.bookings
+                    .filter(b => b.status === 'confirmed')
+                    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                : [];
             const count = confirmedBookings.length;
             const userBooking = confirmedBookings.find(b => b.athleteId === userId);
             const userHasBooked = !!userBooking;
