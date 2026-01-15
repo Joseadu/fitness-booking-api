@@ -58,7 +58,7 @@ export class InvitationsService {
         try {
             // 1. Check if user exists in Supabase and get their ID
             const { data: listData } = await this.supabaseAdmin.auth.admin.listUsers();
-            const existingUser = listData?.users?.find(u => u.email === email);
+            const existingUser = listData?.users?.find((u: any) => u.email === email);
 
             if (existingUser) {
                 // User exists → Check if already a member of THIS box
