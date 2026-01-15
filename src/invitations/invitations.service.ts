@@ -104,9 +104,10 @@ export class InvitationsService {
                 supabaseUserId = newUser.user.id;
 
                 // Create Profile locally
+                const emailUsername = email.split('@')[0];
                 const profile = this.profileRepository.create({
                     id: supabaseUserId,
-                    fullName: 'Invited Athlete',
+                    fullName: emailUsername,
                 });
                 await this.profileRepository.save(profile);
 
