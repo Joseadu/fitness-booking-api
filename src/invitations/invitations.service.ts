@@ -80,11 +80,12 @@ export class InvitationsService {
                 // User exists but not a member → Path B (Existing User)
                 isNewUser = false;
                 supabaseUserId = existingUser.id;
-                this.logger.log(`Usuario existente detectado: ${email} (ID: ${supabaseUserId}). Path B.`);
+                this.logger.log(`[INVITATION] Classification: Path B (Existing User). Email: ${email}, ID: ${supabaseUserId}`);
 
                 return this.handlePathBInvitation(boxId, email, supabaseUserId);
             } else {
                 // User doesn't exist → Path A (New User - Setup Flow)
+                this.logger.log(`[INVITATION] Classification: Path A (New User). Email: ${email}`);
                 return this.handlePathAInvitation(boxId, email);
             }
 
