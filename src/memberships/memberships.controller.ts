@@ -1,4 +1,5 @@
-import { Controller, Get, Param, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Request, UseGuards, Post, Body, Patch } from '@nestjs/common';
+import { CreateMembershipDto } from './dto/create-membership.dto';
 import { MembershipsService } from './memberships.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -16,5 +17,15 @@ export class MembershipsController {
     @Get('box/:boxId')
     async findOne(@Request() req, @Param('boxId') boxId: string) {
         return this.membershipsService.checkMembership(req.user.userId, boxId);
+    }
+
+    @Post()
+    async create(@Request() req, @Body() createMembershipDto: CreateMembershipDto) {
+        return this.membershipsService.create(req.user.userId, createMembershipDto);
+    }
+
+    @Patch(':id/deactivate')
+    async deactivate(@Request() req, @Param('id') id: string) {
+        return this.membershipsService.deactivate(req.user.userId, id);
     }
 }
