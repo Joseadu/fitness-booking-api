@@ -322,9 +322,24 @@ export class SchedulesService {
         });
         if (!schedule) throw new NotFoundException('Clase no encontrada');
         if (schedule.isCancelled) throw new BadRequestException('La clase está cancelada');
-        // 2. Usar el repositorio de Booking (igual que haces en unsubscribe)
+
+        // 2. CHECK MEMBERSHIP STATUS (Security)
+        const membershipRepo = this.scheduleRepository.manager.getRepository('box_memberships');
+        const membership = await membershipRepo.findOne({
+            where: {
+                user_id: userId,
+                box_id: schedule.boxId
+            }
+        }) as any; // Using loose type or import Entity if possible, but 'box_memberships' string is safer contextually if entity not imported
+
+        if (!membership || !membership.is_active) {
+            throw new BadRequestException('Tu suscripción está inactiva o no eres miembro de este box.');
+        }
+
+        // 3. Usar el repositorio de Booking (igual que haces en unsubscribe)
         const bookingRepo = this.scheduleRepository.manager.getRepository(Booking);
-        // 3. Comprobar si ya tiene reserva activa (evitar duplicados)
+
+        // 4. Comprobar si ya tiene reserva activa (evitar duplicados)
         const existing = await bookingRepo.findOne({
             where: {
                 scheduleId,
@@ -336,7 +351,8 @@ export class SchedulesService {
             // Ya tiene reserva, no hacemos nada (idempotente)
             return;
         }
-        // 4. Crear la reserva
+
+        // 5. Crear la reserva
         const booking = bookingRepo.create({
             scheduleId,
             athleteId: userId,

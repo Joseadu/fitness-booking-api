@@ -30,7 +30,7 @@ export class AthleteService {
         await this.profileRepository.update(id, updateProfileDto);
         return this.findOne(id); // Return updated
     }
-    async findAllByBox(boxId: string): Promise<Profile[]> {
+    async findAllByBox(boxId: string): Promise<any[]> {
         const memberships = await this.profileRepository.manager
             .getRepository(BoxMembership)
             .find({
@@ -38,20 +38,13 @@ export class AthleteService {
                 relations: ['profile'],
             });
 
-        return memberships.map(m => m.profile);
+        return memberships.map(m => ({
+            ...m.profile,
+            membership_id: m.id, // Attach membership ID for management
+            role: m.role, // Attach role if needed
+            is_active: m.is_active ?? true // Fallback to true if null (legacy data fix)
+        }));
     }
 
-    async removeMembership(userId: string, boxId: string): Promise<void> {
-        const membership = await this.profileRepository.manager
-            .getRepository(BoxMembership)
-            .findOne({ where: { user_id: userId, box_id: boxId } });
 
-        if (!membership) {
-            throw new NotFoundException(`Membership not found for user ${userId} in box ${boxId}`);
-        }
-
-        await this.profileRepository.manager
-            .getRepository(BoxMembership)
-            .remove(membership);
-    }
 }

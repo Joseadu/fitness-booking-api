@@ -39,9 +39,5 @@ export class AthleteController {
         return this.athleteService.findOne(id);
     }
 
-    @Delete(':id/membership')
-    // Eliminar la relación box_memberships, NO el usuario completo
-    async removeMembership(@Param('id') userId: string, @Query('boxId') boxId: string) {
-        return this.athleteService.removeMembership(userId, boxId);
-    }
+
 }
