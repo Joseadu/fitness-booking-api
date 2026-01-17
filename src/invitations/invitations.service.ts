@@ -12,6 +12,7 @@ import { InvitationErrorCode } from './dto/invitation-error.dto';
 import { Profile } from '../profiles/entities/profile.entity';
 import { BoxMembership } from '../memberships/entities/box-membership.entity';
 import { Box } from '../boxes/entities/box.entity';
+import { MembershipsService } from '../memberships/memberships.service';
 
 @Injectable()
 export class InvitationsService {
@@ -28,6 +29,7 @@ export class InvitationsService {
         private membershipRepository: Repository<BoxMembership>,
         @InjectRepository(Box)
         private boxRepository: Repository<Box>,
+        private readonly membershipsService: MembershipsService,
         private dataSource: DataSource,
         private configService: ConfigService,
     ) {
@@ -243,14 +245,13 @@ export class InvitationsService {
             invitation.updated_at = new Date(); // Force update time
             await queryRunner.manager.save(invitation);
 
-            // 3. Crear Membresía (usando el user_id de la invitación)
-            const membership = queryRunner.manager.create(BoxMembership, {
-                user_id: invitation.user_id, // CRITICAL: Use invitation's user_id, not JWT userId
-                box_id: invitation.box_id,
+            // 3. Crear Membresía via Service (Centralized logic)
+            // Note: We use queryRunner to keep it in the same transaction
+            const membership = await this.membershipsService.create(invitation.user_id, {
+                boxId: invitation.box_id,
                 role: 'athlete',
-                is_active: true
-            });
-            await queryRunner.manager.save(membership);
+                membershipType: 'athlete'
+            }, queryRunner);
 
             // 4. Commit
             await queryRunner.commitTransaction();
@@ -519,14 +520,11 @@ export class InvitationsService {
         }
 
         // 3. Auto-Accept Invitation (Create Membership)
-        const membership = this.membershipRepository.create({
-            user_id: invitation.user_id,
-            box_id: invitation.box_id,
+        await this.membershipsService.create(invitation.user_id, {
+            boxId: invitation.box_id,
             role: 'athlete',
-            is_active: true
+            membershipType: 'athlete'
         });
-
-        await this.membershipRepository.save(membership);
 
         // 4. Mark Invitation as Accepted & Invalidate Token
         invitation.status = InvitationStatus.ACCEPTED;

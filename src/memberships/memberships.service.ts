@@ -44,10 +44,13 @@ export class MembershipsService {
     /**
      * Create a new membership
      */
-    async create(userId: string, createMembershipDto: CreateMembershipDto): Promise<BoxMembership> {
+    async create(userId: string, createMembershipDto: CreateMembershipDto, queryRunner?: any): Promise<BoxMembership> {
         const { boxId, role, membershipType } = createMembershipDto;
 
-        const newMembership = this.membershipRepository.create({
+        // Use the provided queryRunner's manager if available, otherwise default to repository
+        const manager = queryRunner ? queryRunner.manager : this.membershipRepository.manager;
+
+        const newMembership = manager.create(BoxMembership, {
             user_id: userId,
             box_id: boxId,
             role: role || 'athlete',
@@ -55,7 +58,7 @@ export class MembershipsService {
             is_active: true
         });
 
-        return this.membershipRepository.save(newMembership);
+        return manager.save(newMembership);
     }
 
     /**

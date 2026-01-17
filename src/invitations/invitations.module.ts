@@ -7,11 +7,13 @@ import { Profile } from '../profiles/entities/profile.entity';
 import { BoxMembership } from '../memberships/entities/box-membership.entity';
 import { Box } from '../boxes/entities/box.entity';
 import { ConfigModule } from '@nestjs/config';
+import { MembershipsModule } from '../memberships/memberships.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Invitation, Profile, BoxMembership, Box]),
         ConfigModule,
+        MembershipsModule,
     ],
     controllers: [InvitationsController],
     providers: [InvitationsService],
