@@ -1,4 +1,4 @@
-import { UsersModule } from './users/users.module';
+import { ProfilesModule } from './profiles/profiles.module';
 import { MembershipsModule } from './memberships/memberships.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { Module } from '@nestjs/common';
@@ -43,7 +43,7 @@ import { AppService } from './app.service';
     SchedulesModule,
     BookingsModule,
     TemplatesModule,
-    UsersModule,
+    ProfilesModule,
     MembershipsModule,
     InvitationsModule,
   ],

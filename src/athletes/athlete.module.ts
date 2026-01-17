@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AthleteService } from './athlete.service';
 import { AthleteController } from './athlete.controller';
-import { UsersModule } from '../users/users.module';
+import { ProfilesModule } from '../profiles/profiles.module';
 import { MembershipsModule } from '../memberships/memberships.module';
 
 @Module({
-    imports: [UsersModule, MembershipsModule],
+    imports: [ProfilesModule, MembershipsModule],
     controllers: [AthleteController],
     providers: [AthleteService],
     exports: [AthleteService],

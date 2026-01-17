@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { DataSource } from 'typeorm';
 import { SignUpDto, UserRole } from './dto/sign-up.dto';
-import { Profile } from '../users/entities/profile.entity';
+import { Profile } from '../profiles/entities/profile.entity';
 import { Box } from '../boxes/entities/box.entity';
 import { BoxMembership } from '../memberships/entities/box-membership.entity';
 

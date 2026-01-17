@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { InvitationsService } from './invitations.service';
 import { InvitationsController } from './invitations.controller';
 import { Invitation } from './entities/invitation.entity';
-import { Profile } from '../users/entities/profile.entity';
+import { Profile } from '../profiles/entities/profile.entity';
 import { BoxMembership } from '../memberships/entities/box-membership.entity';
 import { Box } from '../boxes/entities/box.entity';
 import { ConfigModule } from '@nestjs/config';

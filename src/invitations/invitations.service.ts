@@ -9,7 +9,7 @@ import { Resend } from 'resend';
 import { Invitation, InvitationStatus } from './entities/invitation.entity';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { InvitationErrorCode } from './dto/invitation-error.dto';
-import { Profile } from '../users/entities/profile.entity';
+import { Profile } from '../profiles/entities/profile.entity';
 import { BoxMembership } from '../memberships/entities/box-membership.entity';
 import { Box } from '../boxes/entities/box.entity';
 

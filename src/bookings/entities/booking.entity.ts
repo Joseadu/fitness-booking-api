@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Schedule } from '../../schedules/entities/schedule.entity';
-import { Profile } from '../../users/entities/profile.entity';
+import { Profile } from '../../profiles/entities/profile.entity';
 
 @Entity('bookings')
 export class Booking {

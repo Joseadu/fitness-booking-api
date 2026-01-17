@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Profile } from '../users/entities/profile.entity';
+import { Profile } from '../profiles/entities/profile.entity';
 import { BoxMembership } from '../memberships/entities/box-membership.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
@@ -12,24 +12,9 @@ export class AthleteService {
         private profileRepository: Repository<Profile>,
     ) { }
 
-    async findOne(id: string): Promise<Profile> {
-        const profile = await this.profileRepository.findOne({
-            where: { id },
-            // Cargamos membresías. Nota: Si la entidad BoxMembership evoluciona a tener relation a Box, añadir 'memberships.box'
-            relations: ['memberships'],
-        });
-        // Si no existe perfil, throw.
-        if (!profile) {
-            throw new NotFoundException(`Profile with ID "${id}" not found`);
-        }
-        return profile;
-    }
+    // findOne removed (Moved to ProfilesService)
 
-    async update(id: string, updateProfileDto: UpdateProfileDto): Promise<Profile> {
-        await this.findOne(id); // Check existence
-        await this.profileRepository.update(id, updateProfileDto);
-        return this.findOne(id); // Return updated
-    }
+    // update removed (Moved to ProfilesService)
     async findAllByBox(boxId: string): Promise<any[]> {
         const memberships = await this.profileRepository.manager
             .getRepository(BoxMembership)

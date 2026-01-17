@@ -12,17 +12,9 @@ export class AthleteController {
     // 👤 USER SELF-MANAGEMENT
     // ==========================================
 
-    @Get('me')
-    getProfile(@Request() req) {
-        // El userId viene del JWT Strategy (via JwtAuthGuard)
-        return this.athleteService.findOne(req.user.userId);
-    }
+    // getMe removed (Moved to ProfilesController)
 
-    @Put('me')
-    @UsePipes(new ValidationPipe())
-    updateProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
-        return this.athleteService.update(req.user.userId, updateProfileDto);
-    }
+    // updateProfile removed (Moved to ProfilesController)
 
     // ==========================================
     // 🏋️ GYM MANAGEMENT (Owners/Trainers)
@@ -34,10 +26,7 @@ export class AthleteController {
         return this.athleteService.findAllByBox(boxId);
     }
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.athleteService.findOne(id);
-    }
+    // findOne removed (Moved to ProfilesController)
 
 
 }

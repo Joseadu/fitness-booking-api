@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Box } from '../../boxes/entities/box.entity';
-import { Profile } from '../../users/entities/profile.entity';
+import { Profile } from '../../profiles/entities/profile.entity';
 
 export enum InvitationStatus {
     PENDING = 'pending',
