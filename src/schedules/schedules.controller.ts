@@ -8,10 +8,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 export class SchedulesController {
     constructor(private readonly schedulesService: SchedulesService) { }
 
-    @Get('my-bookings')
-    findMyBookings(@Request() req) {
-        return this.schedulesService.findMyBookings(req.user.userId);
-    }
+
 
     @Get()
     findAll(
@@ -45,10 +42,7 @@ export class SchedulesController {
         return this.schedulesService.copyWeek(body.boxId, body.fromDate, body.toDate);
     }
 
-    @Delete(':id/booking')
-    unsubscribe(@Param('id') scheduleId: string, @Request() req) {
-        return this.schedulesService.unsubscribe(scheduleId, req.user.userId);
-    }
+
 
     // GET ONE (Para editar)
     @Get(':id')
@@ -81,8 +75,5 @@ export class SchedulesController {
     }
 
     // POST /schedules/:id/booking (FALTA ESTE)
-    @Post(':id/booking')
-    bookClass(@Param('id') scheduleId: string, @Request() req) {
-        return this.schedulesService.bookClass(scheduleId, req.user.userId);
-    }
+
 }

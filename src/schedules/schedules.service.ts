@@ -145,72 +145,9 @@ export class SchedulesService {
         }
     }
 
-    async unsubscribe(scheduleId: string, userId: string): Promise<void> {
-        const bookingRepo = this.scheduleRepository.manager.getRepository(Booking);
 
-        const booking = await bookingRepo.findOne({
-            where: {
-                scheduleId,
-                athleteId: userId,
-                status: 'confirmed'
-            }
-        });
 
-        if (!booking) {
-            throw new NotFoundException('No active booking found for this schedule');
-        }
 
-        await bookingRepo.remove(booking);
-    }
-
-    async findMyBookings(userId: string): Promise<ScheduleResponseDto[]> {
-        const bookingRepo = this.scheduleRepository.manager.getRepository(Booking);
-
-        // Buscar reservas activas del usuario
-        const bookings = await bookingRepo.find({
-            where: {
-                athleteId: userId,
-                status: 'confirmed'
-            },
-            relations: ['schedule', 'schedule.discipline'], // Join con Schedule y Discipline
-            order: {
-                schedule: {
-                    date: 'ASC',
-                    startTime: 'ASC'
-                }
-            }
-        });
-
-        // Mapear al formato DTO
-        return bookings.map(booking => {
-            const schedule = booking.schedule;
-
-            // Si la clase se borró pero la reserva sigue (caso raro), no petamos
-            if (!schedule) return null;
-
-            return {
-                id: schedule.id,
-                date: schedule.date,
-                startTime: schedule.startTime,
-                endTime: schedule.endTime,
-                capacity: schedule.maxCapacity,
-                // currentBookings y spotsAvailable serían queries extra, 
-                // para listado "my bookings" podemos devolver 0 o null si no es crítico.
-                currentBookings: 0,
-                spotsAvailable: 0,
-                userHasBooked: true,
-                userBookingId: booking.id,
-                isCancelled: schedule.isCancelled,
-                cancelReason: schedule.cancellationReason || undefined, // Convert null to undefined
-                discipline: {
-                    id: schedule.discipline?.id,
-                    name: schedule.discipline?.name,
-                    color: schedule.discipline?.color
-                },
-                coach: schedule.trainerId ? { id: schedule.trainerId, name: 'Coach' } : undefined,
-            };
-        }).filter(item => item !== null); // Filtrar nulos
-    }
 
     // GET ONE
     async findOne(id: string) {
@@ -313,53 +250,6 @@ export class SchedulesService {
         );
     }
 
-    //BOOKIN
-    async bookClass(scheduleId: string, userId: string): Promise<void> {
-        // 1. Obtener la clase
-        const schedule = await this.scheduleRepository.findOne({
-            where: { id: scheduleId },
-            relations: ['bookings']
-        });
-        if (!schedule) throw new NotFoundException('Clase no encontrada');
-        if (schedule.isCancelled) throw new BadRequestException('La clase está cancelada');
 
-        // 2. CHECK MEMBERSHIP STATUS (Security)
-        const membershipRepo = this.scheduleRepository.manager.getRepository('box_memberships');
-        const membership = await membershipRepo.findOne({
-            where: {
-                user_id: userId,
-                box_id: schedule.boxId
-            }
-        }) as any; // Using loose type or import Entity if possible, but 'box_memberships' string is safer contextually if entity not imported
-
-        if (!membership || !membership.is_active) {
-            throw new BadRequestException('Tu suscripción está inactiva o no eres miembro de este box.');
-        }
-
-        // 3. Usar el repositorio de Booking (igual que haces en unsubscribe)
-        const bookingRepo = this.scheduleRepository.manager.getRepository(Booking);
-
-        // 4. Comprobar si ya tiene reserva activa (evitar duplicados)
-        const existing = await bookingRepo.findOne({
-            where: {
-                scheduleId,
-                athleteId: userId,
-                status: 'confirmed'
-            }
-        });
-        if (existing) {
-            // Ya tiene reserva, no hacemos nada (idempotente)
-            return;
-        }
-
-        // 5. Crear la reserva
-        const booking = bookingRepo.create({
-            scheduleId,
-            athleteId: userId,
-            status: 'confirmed',
-            createdAt: new Date()
-        });
-        await bookingRepo.save(booking);
-    }
 
 }
