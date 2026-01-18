@@ -6,8 +6,10 @@ import { JwtStrategy } from './jwt.strategy';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
+import { ProfilesModule } from '../profiles/profiles.module';
+
 @Module({
-    imports: [ConfigModule, PassportModule, TypeOrmModule],
+    imports: [ConfigModule, PassportModule, TypeOrmModule, ProfilesModule],
     controllers: [AuthController],
     providers: [AuthService, JwtStrategy],
     exports: [PassportModule, JwtStrategy, AuthService],
