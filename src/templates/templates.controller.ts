@@ -4,15 +4,18 @@ import { CreateTemplateDto, UpdateTemplateDto } from './dto/create-template.dto'
 import { AddTemplateItemDto } from './dto/add-template-item.dto';
 import { ImportTemplateDto, ApplyTemplateDto } from './dto/template-actions.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // Ajustar path auth
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 
 @Controller('week-templates')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class TemplatesController {
     constructor(private readonly templatesService: TemplatesService) { }
 
     // --- Template CRUD ---
 
     @Post()
+    @Roles('business_owner')
     create(@Body() createTemplateDto: CreateTemplateDto) {
         return this.templatesService.create(createTemplateDto);
     }
@@ -28,11 +31,13 @@ export class TemplatesController {
     }
 
     @Put(':id')
+    @Roles('business_owner')
     update(@Param('id') id: string, @Body() updateTemplateDto: UpdateTemplateDto) {
         return this.templatesService.update(id, updateTemplateDto);
     }
 
     @Delete(':id')
+    @Roles('business_owner')
     remove(@Param('id') id: string) {
         return this.templatesService.remove(id);
     }
@@ -40,11 +45,13 @@ export class TemplatesController {
     // --- Logic Endpoints ---
 
     @Post('import-from-week')
+    @Roles('business_owner')
     importFromWeek(@Body() dto: ImportTemplateDto) {
         return this.templatesService.importFromWeek(dto);
     }
 
     @Post(':id/apply')
+    @Roles('business_owner')
     applyTemplate(@Param('id') id: string, @Body() dto: ApplyTemplateDto) {
         return this.templatesService.applyTemplate(id, dto);
     }
@@ -57,6 +64,7 @@ export class TemplatesController {
     // --- Item CRUD (Nested) ---
 
     @Post(':id/items')
+    @Roles('business_owner')
     addItem(@Param('id') id: string, @Body() dto: AddTemplateItemDto) {
         return this.templatesService.addItem(id, dto);
     }

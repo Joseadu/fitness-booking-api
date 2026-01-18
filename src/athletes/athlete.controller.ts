@@ -2,9 +2,11 @@ import { Controller, Get, Body, Put, Delete, Param, Query, UseGuards, Request, U
 import { AthleteService } from './athlete.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 
 @Controller('athletes')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AthleteController {
     constructor(private readonly athleteService: AthleteService) { }
 
@@ -21,7 +23,7 @@ export class AthleteController {
     // ==========================================
 
     @Get()
-    // Recomendable: @Roles(UserRole.BUSINESS_OWNER, UserRole.TRAINER)
+    @Roles('business_owner', 'coach')
     findAllByBox(@Query('boxId') boxId: string) {
         return this.athleteService.findAllByBox(boxId);
     }
