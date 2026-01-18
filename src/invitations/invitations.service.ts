@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, Logger, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger, InternalServerErrorException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -50,7 +50,8 @@ export class InvitationsService {
         }
     }
 
-    async create(boxId: string, createInvitationDto: CreateInvitationDto) {
+    async create(boxId: string, createInvitationDto: CreateInvitationDto, user: any) {
+        this.verifyOwnership(boxId, user);
         const { email } = createInvitationDto;
 
         let supabaseUserId: string | null = null;
@@ -170,7 +171,8 @@ export class InvitationsService {
         }
     }
 
-    async findAllByBox(boxId: string) {
+    async findAllByBox(boxId: string, user: any) {
+        this.verifyOwnership(boxId, user);
         return this.invitationRepository.find({
             where: {
                 box_id: boxId,
@@ -180,9 +182,12 @@ export class InvitationsService {
         });
     }
 
-    async remove(id: string) {
+    async remove(id: string, user: any) {
         const invite = await this.invitationRepository.findOne({ where: { id } });
         if (!invite) throw new NotFoundException('Invitation not found');
+
+        this.verifyOwnership(invite.box_id, user);
+
         return this.invitationRepository.remove(invite);
     }
 
@@ -537,5 +542,18 @@ export class InvitationsService {
             success: true,
             message: 'Account setup complete. Welcome!'
         };
+    }
+    private verifyOwnership(boxId: string, user: any) {
+        if (!user || !user.memberships) {
+            throw new ForbiddenException('No membership context found');
+        }
+
+        const hasPermission = user.roles.includes('admin') || user.memberships.some((m: any) =>
+            m.boxId === boxId && ['business_owner'].includes(m.role)
+        );
+
+        if (!hasPermission) {
+            throw new ForbiddenException(`You do not have permission to manage content for Box ${boxId}`);
+        }
     }
 }

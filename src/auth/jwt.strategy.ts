@@ -33,6 +33,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             userId: payload.sub,
             email: payload.email,
             roles: [...new Set(roles)], // Unique roles
+            memberships: profile.memberships?.map(m => ({
+                boxId: m.box_id,
+                role: m.role
+            })) || [],
             ...payload
         };
     }

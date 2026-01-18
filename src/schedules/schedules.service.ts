@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, In } from 'typeorm';
 import { Schedule } from './entities/schedule.entity';
@@ -76,10 +76,13 @@ export class SchedulesService {
         });
     }
 
-    async create(dtos: CreateScheduleDto[]): Promise<Schedule[]> {
+    async create(dtos: CreateScheduleDto[], user: any): Promise<Schedule[]> {
         const schedulesToSave: Schedule[] = [];
 
         for (const dto of dtos) {
+            // Verify ownership for each box involved (usually just one)
+            this.verifyOwnership(dto.boxId, user);
+
             // Extraemos isVisible explícitamente
             const { date, startTime, endTime, maxCapacity, capacity, trainerId, boxId, isVisible, ...rest } = dto;
             const finalCapacity = maxCapacity || capacity || 15;
@@ -106,7 +109,9 @@ export class SchedulesService {
         return this.scheduleRepository.save(schedulesToSave);
     }
 
-    async copyWeek(boxId: string, fromDate: string, toDate: string): Promise<void> {
+    async copyWeek(boxId: string, fromDate: string, toDate: string, user: any): Promise<void> {
+        this.verifyOwnership(boxId, user);
+
         // fromDate y toDate son 'YYYY-MM-DD'.
         // Como la columna es DATE, podemos usar Between strings directos.
 
@@ -161,9 +166,11 @@ export class SchedulesService {
     }
 
     // UPDATE
-    async update(id: string, dto: any) {
+    async update(id: string, dto: any, user: any) {
         const schedule = await this.scheduleRepository.findOne({ where: { id } });
         if (!schedule) throw new NotFoundException('Clase no encontrada');
+
+        this.verifyOwnership(schedule.boxId, user);
 
         // Actualizar campos permitidos
         if (dto.startTime) schedule.startTime = dto.startTime;
@@ -179,8 +186,14 @@ export class SchedulesService {
     }
 
     // CANCEL
-    async cancel(ids: string[], reason: string) {
+    async cancel(ids: string[], reason: string, user: any) {
         if (!ids || ids.length === 0) return;
+
+        // Verify ownership for all affected schedules
+        const schedules = await this.scheduleRepository.find({ where: { id: In(ids) }, select: ['boxId'] });
+        // Check uniqueness of boxIds to optimize
+        const boxIds = [...new Set(schedules.map(s => s.boxId))];
+        boxIds.forEach(bid => this.verifyOwnership(bid, user));
 
         // Bulk Update
         await this.scheduleRepository.update(
@@ -194,8 +207,12 @@ export class SchedulesService {
     }
 
     // REACTIVATE
-    async reactivate(ids: string[]) {
+    async reactivate(ids: string[], user: any) {
         if (!ids || ids.length === 0) return;
+
+        const schedules = await this.scheduleRepository.find({ where: { id: In(ids) }, select: ['boxId'] });
+        const boxIds = [...new Set(schedules.map(s => s.boxId))];
+        boxIds.forEach(bid => this.verifyOwnership(bid, user));
 
         await this.scheduleRepository.update(
             { id: In(ids) },
@@ -225,15 +242,22 @@ export class SchedulesService {
         };
     }
 
-    async delete(ids: string[]): Promise<void> {
+    async delete(ids: string[], user: any): Promise<void> {
         if (!ids || ids.length === 0) return;
+
+        const schedules = await this.scheduleRepository.find({ where: { id: In(ids) }, select: ['boxId'] });
+        const boxIds = [...new Set(schedules.map(s => s.boxId))];
+        boxIds.forEach(bid => this.verifyOwnership(bid, user));
+
 
         // Borra por bloque, muy eficiente
         await this.scheduleRepository.delete(ids);
     }
 
     // PUBLISH WEEK
-    async publishWeek(boxId: string, weekStartStr: string): Promise<void> {
+    async publishWeek(boxId: string, weekStartStr: string, user: any): Promise<void> {
+        this.verifyOwnership(boxId, user);
+
         // Calcular rango de fechas
         const start = new Date(weekStartStr);
         const end = new Date(start);
@@ -252,4 +276,17 @@ export class SchedulesService {
 
 
 
+    private verifyOwnership(boxId: string, user: any) {
+        if (!user || !user.memberships) {
+            throw new ForbiddenException('No membership context found');
+        }
+
+        const hasPermission = user.roles.includes('admin') || user.memberships.some((m: any) =>
+            m.boxId === boxId && ['business_owner', 'admin', 'coach'].includes(m.role)
+        );
+
+        if (!hasPermission) {
+            throw new ForbiddenException(`You do not have permission to manage content for Box ${boxId}`);
+        }
+    }
 }
