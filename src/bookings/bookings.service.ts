@@ -37,6 +37,19 @@ export class BookingsService {
             throw new BadRequestException('Tu suscripción está inactiva o no eres miembro de este box.');
         }
 
+        // 2.5 CHECK CAPACITY (Safety Net)
+        // Count confirmed bookings for this schedule
+        const currentBookingsCount = await this.bookingRepository.count({
+            where: {
+                scheduleId: scheduleId,
+                status: 'confirmed'
+            }
+        });
+
+        if (currentBookingsCount >= schedule.maxCapacity) {
+            throw new BadRequestException('La clase está completa.');
+        }
+
         // 3. Comprobar si ya tiene reserva activa (evitar duplicados)
         const existing = await this.bookingRepository.findOne({
             where: {
