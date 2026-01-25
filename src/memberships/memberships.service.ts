@@ -121,4 +121,51 @@ export class MembershipsService {
             throw new ForbiddenException(`You do not have permission to manage members for Box ${boxId}`);
         }
     }
+
+    /**
+     * Activate membership by ID (simplified version for athletes controller)
+     */
+    async activateMembership(membershipId: string): Promise<BoxMembership> {
+        const membership = await this.membershipRepository.findOne({
+            where: { id: membershipId }
+        });
+
+        if (!membership) {
+            throw new NotFoundException(`Membership not found`);
+        }
+
+        membership.is_active = true;
+        return this.membershipRepository.save(membership);
+    }
+
+    /**
+     * Deactivate membership by ID (simplified version for athletes controller)
+     */
+    async deactivateMembership(membershipId: string): Promise<BoxMembership> {
+        const membership = await this.membershipRepository.findOne({
+            where: { id: membershipId }
+        });
+
+        if (!membership) {
+            throw new NotFoundException(`Membership not found`);
+        }
+
+        membership.is_active = false;
+        return this.membershipRepository.save(membership);
+    }
+
+    /**
+     * Delete membership by ID (simplified version for athletes controller)
+     */
+    async deleteMembership(membershipId: string): Promise<void> {
+        const membership = await this.membershipRepository.findOne({
+            where: { id: membershipId }
+        });
+
+        if (!membership) {
+            throw new NotFoundException(`Membership not found`);
+        }
+
+        await this.membershipRepository.remove(membership);
+    }
 }
