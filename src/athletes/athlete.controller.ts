@@ -25,8 +25,8 @@ export class AthleteController {
 
     @Get()
     @Roles('business_owner', 'coach')
-    findAllByBox(@Query('boxId') boxId: string, @Query() paginationDto: PaginationDto) {
-        return this.athleteService.findAllByBox(boxId, paginationDto);
+    findAllByBox(@Query('boxId') boxId: string, @Query() paginationDto: PaginationDto, @Query('status') status?: string) {
+        return this.athleteService.findAllByBox(boxId, paginationDto, status);
     }
 
     // findOne removed (Moved to ProfilesController)
