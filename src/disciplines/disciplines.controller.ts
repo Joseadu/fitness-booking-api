@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Put, Param, Delete, Query, UseGuards, Vali
 import { DisciplinesService } from './disciplines.service';
 import { CreateDisciplineDto } from './dto/create-discipline.dto';
 import { UpdateDisciplineDto } from './dto/update-discipline.dto';
+import { PaginationDto } from '../common/dtos/pagination.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -21,8 +22,8 @@ export class DisciplinesController {
     }
 
     @Get()
-    findAll(@Query('boxId') boxId?: string) {
-        return this.disciplinesService.findAll(boxId);
+    findAll(@Query('boxId') boxId: string, @Query() paginationDto: PaginationDto) {
+        return this.disciplinesService.findAll(boxId, paginationDto);
     }
 
     @Get(':id')

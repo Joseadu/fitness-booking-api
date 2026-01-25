@@ -4,6 +4,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { PaginationDto } from '../common/dtos/pagination.dto';
 
 @Controller('athletes')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -24,8 +25,8 @@ export class AthleteController {
 
     @Get()
     @Roles('business_owner', 'coach')
-    findAllByBox(@Query('boxId') boxId: string) {
-        return this.athleteService.findAllByBox(boxId);
+    findAllByBox(@Query('boxId') boxId: string, @Query() paginationDto: PaginationDto) {
+        return this.athleteService.findAllByBox(boxId, paginationDto);
     }
 
     // findOne removed (Moved to ProfilesController)

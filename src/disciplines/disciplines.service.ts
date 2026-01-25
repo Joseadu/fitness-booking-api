@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { CreateDisciplineDto } from './dto/create-discipline.dto';
 import { UpdateDisciplineDto } from './dto/update-discipline.dto';
 import { Discipline } from './entities/discipline.entity';
+import { PaginationDto } from '../common/dtos/pagination.dto';
+import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 
 @Injectable()
 export class DisciplinesService {
@@ -17,11 +19,29 @@ export class DisciplinesService {
         return this.disciplineRepository.save(discipline);
     }
 
-    async findAll(boxId?: string): Promise<Discipline[]> {
-        if (boxId) {
-            return this.disciplineRepository.find({ where: { boxId } });
-        }
-        return this.disciplineRepository.find();
+    async findAll(boxId: string, paginationDto: PaginationDto): Promise<PaginatedResult<Discipline>> {
+        const { page = 1, limit = 10 } = paginationDto;
+        const skip = (page - 1) * limit;
+
+        const [items, totalItems] = await this.disciplineRepository.findAndCount({
+            where: { boxId },
+            skip,
+            take: limit,
+            order: { name: 'ASC' }
+        });
+
+        const totalPages = Math.ceil(totalItems / limit);
+
+        return {
+            items,
+            meta: {
+                totalItems,
+                itemCount: items.length,
+                itemsPerPage: limit,
+                totalPages,
+                currentPage: page
+            }
+        };
     }
 
     async findOne(id: string): Promise<Discipline> {
