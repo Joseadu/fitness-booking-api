@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Put, Param, Delete, Query, UseGuards, ValidationPipe, UsePipes } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Patch, Param, Delete, Query, UseGuards, ValidationPipe, UsePipes } from '@nestjs/common';
 import { DisciplinesService } from './disciplines.service';
 import { CreateDisciplineDto } from './dto/create-discipline.dto';
 import { UpdateDisciplineDto } from './dto/update-discipline.dto';
@@ -42,5 +42,17 @@ export class DisciplinesController {
     @Roles('business_owner')
     remove(@Param('id') id: string) {
         return this.disciplinesService.remove(id);
+    }
+
+    @Patch(':id/activate')
+    @Roles('business_owner')
+    activate(@Param('id') id: string) {
+        return this.disciplinesService.update(id, { isActive: true });
+    }
+
+    @Patch(':id/deactivate')
+    @Roles('business_owner')
+    deactivate(@Param('id') id: string) {
+        return this.disciplinesService.update(id, { isActive: false });
     }
 }
