@@ -7,6 +7,8 @@ import { Schedule } from '../schedules/entities/schedule.entity';
 import { CreateTemplateDto, UpdateTemplateDto } from './dto/create-template.dto';
 import { AddTemplateItemDto } from './dto/add-template-item.dto';
 import { ImportTemplateDto, ApplyTemplateDto } from './dto/template-actions.dto';
+import { PaginationDto } from '../common/dtos/pagination.dto';
+import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 
 @Injectable()
 export class TemplatesService {
@@ -22,11 +24,29 @@ export class TemplatesService {
 
     // --- CRUD Template ---
 
-    async findAll(boxId: string): Promise<WeekTemplate[]> {
-        return this.templateRepo.find({
+    async findAll(boxId: string, paginationDto: PaginationDto): Promise<PaginatedResult<WeekTemplate>> {
+        const { page = 1, limit = 10 } = paginationDto;
+        const skip = (page - 1) * limit;
+
+        const [items, totalItems] = await this.templateRepo.findAndCount({
             where: { boxId },
             order: { createdAt: 'DESC' },
+            skip,
+            take: limit
         });
+
+        const totalPages = Math.ceil(totalItems / limit);
+
+        return {
+            items,
+            meta: {
+                totalItems,
+                itemCount: items.length,
+                itemsPerPage: limit,
+                totalPages,
+                currentPage: page
+            }
+        };
     }
 
     async findOne(id: string): Promise<WeekTemplate> {

@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Param, Delete, Put, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Put, Patch, Query, UseGuards } from '@nestjs/common';
 import { TemplatesService } from './templates.service';
 import { CreateTemplateDto, UpdateTemplateDto } from './dto/create-template.dto'; // Validar paths
 import { AddTemplateItemDto } from './dto/add-template-item.dto';
 import { ImportTemplateDto, ApplyTemplateDto } from './dto/template-actions.dto';
+import { PaginationDto } from '../common/dtos/pagination.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // Ajustar path auth
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -21,8 +22,8 @@ export class TemplatesController {
     }
 
     @Get()
-    findAll(@Query('boxId') boxId: string) {
-        return this.templatesService.findAll(boxId);
+    findAll(@Query('boxId') boxId: string, @Query() paginationDto: PaginationDto) {
+        return this.templatesService.findAll(boxId, paginationDto);
     }
 
     @Get(':id')
@@ -40,6 +41,18 @@ export class TemplatesController {
     @Roles('business_owner')
     remove(@Param('id') id: string) {
         return this.templatesService.remove(id);
+    }
+
+    @Patch(':id/activate')
+    @Roles('business_owner')
+    activate(@Param('id') id: string) {
+        return this.templatesService.update(id, { isActive: true });
+    }
+
+    @Patch(':id/deactivate')
+    @Roles('business_owner')
+    deactivate(@Param('id') id: string) {
+        return this.templatesService.update(id, { isActive: false });
     }
 
     // --- Logic Endpoints ---
