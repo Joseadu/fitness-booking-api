@@ -16,4 +16,13 @@ export class CreateDisciplineDto {
     @IsString()
     @IsOptional()
     description?: string;
+
+    @IsOptional()
+    durationMinutes?: number;
+
+    @IsOptional()
+    isActive?: boolean;
+
+    @IsOptional()
+    displayOrder?: number;
 }
