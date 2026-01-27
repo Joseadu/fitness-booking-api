@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query, Patch } from '@nestjs/common';
 import { InvitationsService } from './invitations.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -6,73 +6,81 @@ import { Public } from '../auth/public.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { PaginationDto } from '../common/dtos/pagination.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Controller()
+@Controller('invitations')
 export class InvitationsController {
     constructor(private readonly invitationsService: InvitationsService) { }
 
-    // POST /boxes/:boxId/invitations
-    @Post('boxes/:boxId/invitations')
+    // POST /invitations
+    @Post()
     @Roles('business_owner')
     create(
-        @Param('boxId') boxId: string,
-        @Body() createInvitationDto: CreateInvitationDto,
+        @Body() body: CreateInvitationDto & { boxId: string },
         @CurrentUser() user
     ) {
-        return this.invitationsService.create(boxId, createInvitationDto, user);
+        return this.invitationsService.create(body.boxId, body, user);
     }
 
-    // GET /boxes/:boxId/invitations
-    @Get('boxes/:boxId/invitations')
+    // GET /invitations?boxId=...
+    @Get()
     @Roles('business_owner')
-    findAllByBox(@Param('boxId') boxId: string, @CurrentUser() user) {
+    findAllByBox(
+        @Query('boxId') boxId: string,
+        @Query() pagination: PaginationDto,
+        @CurrentUser() user
+    ) {
+        // Adapt service to use pagination if possible, or just return list for now
+        // TODO: Update service to return PaginatedResult
         return this.invitationsService.findAllByBox(boxId, user);
     }
 
     // DELETE /invitations/:id
-    @Delete('invitations/:id')
+    @Delete(':id')
     @Roles('business_owner')
     remove(@Param('id') id: string, @CurrentUser() user) {
         return this.invitationsService.remove(id, user);
     }
 
     // POST /invitations/:id/accept
-    @Post('invitations/:id/accept')
+    @Post(':id/accept')
     accept(@Param('id') id: string, @CurrentUser() user) {
-        // req.user.userId comes from JwtStrategy
         return this.invitationsService.accept(id, user.userId);
     }
 
-    // GET /invitations/my-pending (For future notification panel)
-    @Get('invitations/my-pending')
+    // PATCH /invitations/:id/status (Standardize status update)
+    @Patch(':id/status')
+    updateStatus(@Param('id') id: string, @Body('status') status: 'rejected', @CurrentUser() user) {
+        if (status === 'rejected') {
+            return this.invitationsService.reject(id, user.userId);
+        }
+    }
+
+    // GET /invitations/my-pending
+    @Get('my-pending')
     getMyPending(@CurrentUser() user) {
         return this.invitationsService.findPendingByEmail(user.email);
     }
 
-    // POST /invitations/:id/reject (For future notification panel)
-    @Post('invitations/:id/reject')
-    reject(@Param('id') id: string, @CurrentUser() user) {
-        return this.invitationsService.reject(id, user.userId);
-    }
-
-    // DEPRECATED: Will be removed in future version
-    // Use email link flow instead
-    @Post('invitations/accept-mine')
-    acceptMine(@CurrentUser() user) {
-        return this.invitationsService.acceptPendingInvitations(user.userId, user.email);
-    }
     // Public endpoint to validate setup token
     @Public()
-    @Get('invitations/validate-token/:token')
+    @Get('validate-token/:token')
     validateToken(@Param('token') token: string) {
         return this.invitationsService.validateToken(token);
     }
 
-    // Public endpoint to complete setup (set password + accept invite)
+    // Public endpoint to complete setup
     @Public()
-    @Post('invitations/setup-account')
+    @Post('setup-account')
     setupAccount(@Body() body: { token: string; password: string }) {
         return this.invitationsService.setupAccount(body.token, body.password);
+    }
+
+    // --- Backward Compatibility (DEPRECATED) ---
+    // POST /invitations/accept-mine
+    @Post('accept-mine')
+    acceptMine(@CurrentUser() user) {
+        return this.invitationsService.acceptPendingInvitations(user.userId, user.email);
     }
 }
