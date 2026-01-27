@@ -118,9 +118,9 @@ export class TemplatesService {
         // 1. Buscar clases activas
         const schedules = await this.scheduleRepo.find({
             where: {
-                boxId,
+                box_id: boxId,
                 date: Between(startStr, endStr),
-                isCancelled: false,
+                is_cancelled: false,
             }
         });
 
@@ -136,7 +136,7 @@ export class TemplatesService {
         try {
             // Crear Template
             const newTemplate = queryRunner.manager.create(WeekTemplate, {
-                boxId,
+                box_id: boxId,
                 name,
                 description: `Imported from week ${startStr}`,
             });
@@ -152,12 +152,12 @@ export class TemplatesService {
 
                 return queryRunner.manager.create(WeekTemplateItem, {
                     templateId: savedTemplate.id,
-                    disciplineId: schedule.disciplineId, // Asume que schedule tiene disciplineId cargado? No, es raw ID.
-                    trainerId: schedule.trainerId,
+                    disciplineId: schedule.discipline_id,
+                    trainerId: schedule.trainer_id,
                     dayOfWeek,
-                    startTime: schedule.startTime,
-                    endTime: schedule.endTime,
-                    maxCapacity: schedule.maxCapacity,
+                    startTime: schedule.start_time,
+                    endTime: schedule.end_time,
+                    maxCapacity: schedule.max_capacity,
                     name: schedule.name,
                     description: schedule.description,
                 });
@@ -203,11 +203,11 @@ export class TemplatesService {
 
             const exists = await this.scheduleRepo.findOne({
                 where: {
-                    boxId: template.boxId,
-                    disciplineId: item.disciplineId,
+                    box_id: template.boxId,
+                    discipline_id: item.disciplineId,
                     date: dateStr,
-                    startTime: item.startTime,
-                    isCancelled: false
+                    start_time: item.startTime,
+                    is_cancelled: false
                 }
             });
 
@@ -239,18 +239,18 @@ export class TemplatesService {
             const dateStr = itemDate.toISOString().split('T')[0];
 
             const schedule = {
-                boxId: template.boxId,
-                disciplineId: item.disciplineId,
-                trainerId: item.trainerId,
+                box_id: template.boxId,
+                discipline_id: item.disciplineId,
+                trainer_id: item.trainerId,
                 date: dateStr,
-                startTime: item.startTime,
-                endTime: item.endTime,
+                start_time: item.startTime,
+                end_time: item.endTime,
                 // Asegurar capacidad por defecto
-                maxCapacity: item.maxCapacity || 15,
+                max_capacity: item.maxCapacity || 15,
 
                 // --- CLAVE DEL FIX ---
-                isVisible: false, // FORZAMOS FALSE (Borrador)
-                isCancelled: false,
+                is_visible: false, // FORZAMOS FALSE (Borrador)
+                is_cancelled: false,
                 // ---------------------
 
                 name: item.name,

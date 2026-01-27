@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, UseGuards, Request, Delete, Param, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards, Request, Delete, Param, Put, UseInterceptors, ClassSerializerInterceptor } from '@nestjs/common';
 import { SchedulesService } from './schedules.service';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -8,6 +8,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 
 @Controller('schedules')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@UseInterceptors(ClassSerializerInterceptor)
 export class SchedulesController {
     constructor(private readonly schedulesService: SchedulesService) { }
 
@@ -43,8 +44,8 @@ export class SchedulesController {
 
     @Post('copy-week')
     @Roles('business_owner')
-    copyWeek(@Body() body: { boxId: string, fromDate: string, toDate: string }, @CurrentUser() user) {
-        return this.schedulesService.copyWeek(body.boxId, body.fromDate, body.toDate, user);
+    copyWeek(@Body() body: { box_id: string, from_date: string, to_date: string }, @CurrentUser() user) {
+        return this.schedulesService.copyWeek(body.box_id, body.from_date, body.to_date, user);
     }
 
 
@@ -81,8 +82,8 @@ export class SchedulesController {
     // PUBLISH WEEK (publicar una semana)
     @Post('publish-week')
     @Roles('business_owner')
-    publishWeek(@Body() body: { boxId: string, weekStart: string }, @CurrentUser() user) {
-        return this.schedulesService.publishWeek(body.boxId, body.weekStart, user);
+    publishWeek(@Body() body: { box_id: string, week_start: string }, @CurrentUser() user) {
+        return this.schedulesService.publishWeek(body.box_id, body.week_start, user);
     }
 
     // POST /schedules/:id/booking (FALTA ESTE)

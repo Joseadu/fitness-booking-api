@@ -15,12 +15,12 @@ export class SchedulesService {
 
     async findAllByBox(boxId: string, userId: string, fromDate?: string, toDate?: string, includeDrafts: boolean = false): Promise<ScheduleResponseDto[]> {
         const where: any = {
-            boxId,
+            box_id: boxId,
         };
 
         // Si NO pedimos drafts, solo mostramos las visibles (Publicadas)
         if (!includeDrafts) {
-            where.isVisible = true;
+            where.is_visible = true;
         }
 
         if (fromDate && toDate) {
@@ -34,7 +34,7 @@ export class SchedulesService {
         const schedules = await this.scheduleRepository.find({
             where,
             relations: ['discipline', 'bookings', 'bookings.athlete'],
-            order: { date: 'ASC', startTime: 'ASC' },
+            order: { date: 'ASC', start_time: 'ASC' },
         });
 
         return schedules.map(schedule => {
@@ -47,32 +47,32 @@ export class SchedulesService {
             const userBooking = confirmedBookings.find(b => b.athleteId === userId);
             const userHasBooked = !!userBooking;
 
+            // TODO: Use a proper DTO or ClassSerializer instead of manual map
             return {
                 id: schedule.id,
                 date: schedule.date,
-                startTime: schedule.startTime,
-                endTime: schedule.endTime,
-                isVisible: (schedule as any).isVisible ?? (schedule as any).is_visible ?? true,
-                isCancelled: (schedule as any).isCancelled ?? (schedule as any).is_cancelled ?? false,
-                cancelReason: schedule.cancellationReason || undefined,
-                capacity: (schedule as any).maxCapacity ?? (schedule as any).max_capacity ?? 15,
-                maxCapacity: (schedule as any).maxCapacity ?? (schedule as any).max_capacity ?? 15,
-                currentBookings: count,
-                spotsAvailable: Math.max(0, ((schedule as any).maxCapacity || 15) - count),
-                userHasBooked: userHasBooked,
-                userBookingId: userBooking?.id,
+                start_time: schedule.start_time,
+                end_time: schedule.end_time,
+                is_visible: schedule.is_visible,
+                is_cancelled: schedule.is_cancelled,
+                cancellation_reason: schedule.cancellation_reason,
+                max_capacity: schedule.max_capacity,
+                current_bookings: count,
+                spots_available: Math.max(0, (schedule.max_capacity || 15) - count),
+                user_has_booked: userHasBooked,
+                user_booking_id: userBooking?.id,
                 discipline: {
                     id: schedule.discipline?.id,
                     name: schedule.discipline?.name,
                     color: schedule.discipline?.color
                 },
-                coach: schedule.trainerId ? { id: schedule.trainerId, name: 'Coach' } : undefined,
+                coach: schedule.trainer_id ? { id: schedule.trainer_id, name: 'Coach' } : undefined,
                 bookings: confirmedBookings.map(booking => ({
                     id: booking.athlete?.id,
-                    fullName: booking.athlete?.fullName,
-                    avatarUrl: booking.athlete?.avatarUrl
+                    full_name: booking.athlete?.fullName,
+                    avatar_url: booking.athlete?.avatarUrl
                 }))
-            };
+            } as any; // Temporary cast until ScheduleResponseDto is snake_case
         });
     }
 
@@ -81,25 +81,23 @@ export class SchedulesService {
 
         for (const dto of dtos) {
             // Verify ownership for each box involved (usually just one)
-            this.verifyOwnership(dto.boxId, user);
+            this.verifyOwnership(dto.box_id, user);
 
-            // Extraemos isVisible explícitamente
-            const { date, startTime, endTime, maxCapacity, capacity, trainerId, boxId, isVisible, ...rest } = dto;
-            const finalCapacity = maxCapacity || capacity || 15;
+            const { date, start_time, end_time, max_capacity, trainer_id, box_id, is_visible, ...rest } = dto;
+            const finalCapacity = max_capacity || 15;
 
             const schedule = this.scheduleRepository.create({
                 ...rest,
-                boxId, // Aseguramos boxId
+                box_id,
                 date,
-                startTime,
-                endTime,
-                maxCapacity: finalCapacity,
-                trainerId,
+                start_time,
+                end_time,
+                max_capacity: finalCapacity,
+                trainer_id,
 
-                // Usamos el valor del DTO, o false si no viene (Borrador por defecto)
-                isVisible: isVisible ?? false,
+                is_visible: is_visible ?? false,
 
-                isCancelled: false
+                is_cancelled: false
             });
 
             schedulesToSave.push(schedule);
@@ -117,9 +115,9 @@ export class SchedulesService {
 
         const sources = await this.scheduleRepository.find({
             where: {
-                boxId,
+                box_id: boxId,
                 date: Between(fromDate, toDate),
-                isCancelled: false,
+                is_cancelled: false,
             }
         });
 
@@ -131,15 +129,15 @@ export class SchedulesService {
             const newDateStr = newDateObj.toISOString().split('T')[0];
 
             return this.scheduleRepository.create({
-                boxId: source.boxId,
-                disciplineId: source.disciplineId,
-                maxCapacity: source.maxCapacity,
-                trainerId: source.trainerId,
-                isVisible: false, // Draft
+                box_id: source.box_id,
+                discipline_id: source.discipline_id,
+                max_capacity: source.max_capacity,
+                trainer_id: source.trainer_id,
+                is_visible: false, // Draft
                 // Copiar horas tal cual
                 date: newDateStr,
-                startTime: source.startTime,
-                endTime: source.endTime,
+                start_time: source.start_time,
+                end_time: source.end_time,
                 name: source.name,
                 description: source.description
             });
@@ -170,17 +168,17 @@ export class SchedulesService {
         const schedule = await this.scheduleRepository.findOne({ where: { id } });
         if (!schedule) throw new NotFoundException('Clase no encontrada');
 
-        this.verifyOwnership(schedule.boxId, user);
+        this.verifyOwnership(schedule.box_id, user);
 
         // Actualizar campos permitidos
-        if (dto.startTime) schedule.startTime = dto.startTime;
-        if (dto.endTime) schedule.endTime = dto.endTime;
-        if (dto.maxCapacity) schedule.maxCapacity = dto.maxCapacity;
+        if (dto.start_time) schedule.start_time = dto.start_time;
+        if (dto.end_time) schedule.end_time = dto.end_time;
+        if (dto.max_capacity) schedule.max_capacity = dto.max_capacity;
         if (dto.name !== undefined) schedule.name = dto.name;
         if (dto.description !== undefined) schedule.description = dto.description;
         // if (dto.notes !== undefined) schedule.notes = dto.notes; // Notes no existe en Entity aun
         // Importante: Permitir toggle de visibilidad
-        if (dto.isVisible !== undefined) schedule.isVisible = dto.isVisible;
+        if (dto.is_visible !== undefined) schedule.is_visible = dto.is_visible;
 
         return this.scheduleRepository.save(schedule);
     }
@@ -190,18 +188,18 @@ export class SchedulesService {
         if (!ids || ids.length === 0) return;
 
         // Verify ownership for all affected schedules
-        const schedules = await this.scheduleRepository.find({ where: { id: In(ids) }, select: ['boxId'] });
+        const schedules = await this.scheduleRepository.find({ where: { id: In(ids) }, select: ['box_id'] });
         // Check uniqueness of boxIds to optimize
-        const boxIds = [...new Set(schedules.map(s => s.boxId))];
+        const boxIds = [...new Set(schedules.map(s => s.box_id))];
         boxIds.forEach(bid => this.verifyOwnership(bid, user));
 
         // Bulk Update
         await this.scheduleRepository.update(
             { id: In(ids) },
             {
-                isCancelled: true,
-                cancellationReason: reason,
-                isVisible: false
+                is_cancelled: true,
+                cancellation_reason: reason,
+                is_visible: false
             }
         );
     }
@@ -210,16 +208,16 @@ export class SchedulesService {
     async reactivate(ids: string[], user: any) {
         if (!ids || ids.length === 0) return;
 
-        const schedules = await this.scheduleRepository.find({ where: { id: In(ids) }, select: ['boxId'] });
-        const boxIds = [...new Set(schedules.map(s => s.boxId))];
+        const schedules = await this.scheduleRepository.find({ where: { id: In(ids) }, select: ['box_id'] });
+        const boxIds = [...new Set(schedules.map(s => s.box_id))];
         boxIds.forEach(bid => this.verifyOwnership(bid, user));
 
         await this.scheduleRepository.update(
             { id: In(ids) },
             {
-                isCancelled: false,
-                cancellationReason: null,
-                isVisible: true
+                is_cancelled: false,
+                cancellation_reason: null,
+                is_visible: true
             }
         );
     }
@@ -245,8 +243,8 @@ export class SchedulesService {
     async delete(ids: string[], user: any): Promise<void> {
         if (!ids || ids.length === 0) return;
 
-        const schedules = await this.scheduleRepository.find({ where: { id: In(ids) }, select: ['boxId'] });
-        const boxIds = [...new Set(schedules.map(s => s.boxId))];
+        const schedules = await this.scheduleRepository.find({ where: { id: In(ids) }, select: ['box_id'] });
+        const boxIds = [...new Set(schedules.map(s => s.box_id))];
         boxIds.forEach(bid => this.verifyOwnership(bid, user));
 
 
@@ -265,12 +263,12 @@ export class SchedulesService {
         // Update masivo inteligente: Solo las ocultas y activas
         await this.scheduleRepository.update(
             {
-                boxId,
+                box_id: boxId,
                 date: Between(start.toISOString().split('T')[0], end.toISOString().split('T')[0]),
-                isVisible: false,
-                isCancelled: false
+                is_visible: false,
+                is_cancelled: false
             },
-            { isVisible: true }
+            { is_visible: true }
         );
     }
 

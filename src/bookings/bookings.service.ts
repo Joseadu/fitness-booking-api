@@ -23,13 +23,13 @@ export class BookingsService {
             relations: ['bookings']
         });
         if (!schedule) throw new NotFoundException('Clase no encontrada');
-        if (schedule.isCancelled) throw new BadRequestException('La clase está cancelada');
+        if (schedule.is_cancelled) throw new BadRequestException('La clase está cancelada');
 
         // 2. CHECK MEMBERSHIP STATUS (Security)
         const membership = await this.membershipRepository.findOne({
             where: {
                 user_id: userId,
-                box_id: schedule.boxId
+                box_id: schedule.box_id
             }
         });
 
@@ -46,7 +46,7 @@ export class BookingsService {
             }
         });
 
-        if (currentBookingsCount >= schedule.maxCapacity) {
+        if (currentBookingsCount >= schedule.max_capacity) {
             throw new BadRequestException('La clase está completa.');
         }
 
@@ -100,7 +100,7 @@ export class BookingsService {
             order: {
                 schedule: {
                     date: 'ASC',
-                    startTime: 'ASC'
+                    start_time: 'ASC'
                 }
             }
         });
@@ -115,21 +115,21 @@ export class BookingsService {
             return {
                 id: schedule.id,
                 date: schedule.date,
-                startTime: schedule.startTime,
-                endTime: schedule.endTime,
-                capacity: schedule.maxCapacity,
+                startTime: schedule.start_time,
+                endTime: schedule.end_time,
+                capacity: schedule.max_capacity,
                 currentBookings: 0,
                 spotsAvailable: 0,
                 userHasBooked: true,
                 userBookingId: booking.id,
-                isCancelled: schedule.isCancelled,
-                cancelReason: schedule.cancellationReason || undefined,
+                isCancelled: schedule.is_cancelled,
+                cancelReason: schedule.cancellation_reason || undefined,
                 discipline: {
                     id: schedule.discipline?.id,
                     name: schedule.discipline?.name,
                     color: schedule.discipline?.color
                 },
-                coach: schedule.trainerId ? { id: schedule.trainerId, name: 'Coach' } : undefined,
+                coach: schedule.trainer_id ? { id: schedule.trainer_id, name: 'Coach' } : undefined,
             };
         }).filter(item => item !== null); // Filtrar nulos
     }

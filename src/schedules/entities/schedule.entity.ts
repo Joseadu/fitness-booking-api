@@ -1,10 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Box } from '../../boxes/entities/box.entity';
-// Importaremos Discipline cuando el módulo esté refactorizado o usable, por ahora ID raw o lazy.
-// Asumimos Discipline entity existe en src/disciplines/entities/discipline.entity.ts
 import { Discipline } from '../../disciplines/entities/discipline.entity';
 import { Booking } from '../../bookings/entities/booking.entity';
-import { OneToMany } from 'typeorm';
+import { Expose } from 'class-transformer';
 
 @Entity('schedules')
 export class Schedule {
@@ -15,7 +13,7 @@ export class Schedule {
     createdAt: Date;
 
     @Column('uuid', { name: 'box_id' })
-    boxId: string;
+    box_id: string;
 
     @ManyToOne(() => Box)
     @JoinColumn({ name: 'box_id' })
@@ -26,34 +24,34 @@ export class Schedule {
     date: string;
 
     @Column('time', { name: 'start_time' })
-    startTime: string;
+    start_time: string;
 
     @Column('time', { name: 'end_time' })
-    endTime: string;
+    end_time: string;
 
     @Column('uuid', { name: 'discipline_id', nullable: true })
-    disciplineId: string;
+    discipline_id: string;
 
     @ManyToOne(() => Discipline)
     @JoinColumn({ name: 'discipline_id' })
     discipline: Discipline;
 
     @Column('uuid', { name: 'trainer_id', nullable: true })
-    trainerId: string;
+    trainer_id: string;
 
     // TODO: Relation with Trainer/User
 
     @Column('integer', { name: 'max_capacity', default: 0 })
-    maxCapacity: number;
+    max_capacity: number;
 
     @Column('boolean', { name: 'is_visible', default: true })
-    isVisible: boolean;
+    is_visible: boolean;
 
     @Column('boolean', { name: 'is_cancelled', default: false })
-    isCancelled: boolean;
+    is_cancelled: boolean;
 
     @Column('text', { name: 'cancellation_reason', nullable: true })
-    cancellationReason: string | null;
+    cancellation_reason: string | null;
 
     @Column('text', { name: 'name', nullable: true })
     name: string;
