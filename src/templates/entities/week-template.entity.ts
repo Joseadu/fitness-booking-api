@@ -1,11 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity } from '../../common/entities/base.entity';
 import { Box } from '../../boxes/entities/box.entity';
 import { WeekTemplateItem } from './week-template-item.entity';
 
 @Entity('week_templates')
-export class WeekTemplate {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+export class WeekTemplate extends BaseEntity {
 
     @Column('uuid', { name: 'box_id' })
     boxId: string;
@@ -26,9 +25,5 @@ export class WeekTemplate {
     @OneToMany(() => WeekTemplateItem, (item) => item.template)
     items: WeekTemplateItem[];
 
-    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
-    createdAt: Date;
 
-    @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
-    updatedAt: Date;
 }

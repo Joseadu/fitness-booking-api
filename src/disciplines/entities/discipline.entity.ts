@@ -1,13 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column } from 'typeorm';
+import { BaseEntity } from '../../common/entities/base.entity';
 
 @Entity('disciplines')
-export class Discipline {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
-    @CreateDateColumn({ name: 'created_at' })
-    createdAt: Date;
-    @UpdateDateColumn({ name: 'updated_at' }) // Recomendado añadir
-    updatedAt: Date;
+export class Discipline extends BaseEntity {
     @Column('text')
     name: string;
     @Column('uuid', { name: 'box_id' })

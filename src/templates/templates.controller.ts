@@ -7,11 +7,15 @@ import { PaginationDto } from '../common/dtos/pagination.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // Ajustar path auth
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { BaseController } from '../common/controllers/base.controller';
+import { WeekTemplate } from './entities/week-template.entity';
 
 @Controller('week-templates')
 @UseGuards(JwtAuthGuard, RolesGuard)
-export class TemplatesController {
-    constructor(private readonly templatesService: TemplatesService) { }
+export class TemplatesController extends BaseController<WeekTemplate> {
+    constructor(private readonly templatesService: TemplatesService) {
+        super(templatesService);
+    }
 
     // --- Template CRUD ---
 
@@ -22,14 +26,11 @@ export class TemplatesController {
     }
 
     @Get()
-    findAll(@Query('boxId') boxId: string, @Query() paginationDto: PaginationDto) {
-        return this.templatesService.findAll(boxId, paginationDto);
+    findAll(@Query() paginationDto: PaginationDto, @Query('boxId') boxId?: string) {
+        return this.templatesService.findAll(paginationDto, { boxId });
     }
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.templatesService.findOne(id);
-    }
+    // findOne inherited (uses service.findOne which handles relations)
 
     @Put(':id')
     @Roles('business_owner')
@@ -37,11 +38,7 @@ export class TemplatesController {
         return this.templatesService.update(id, updateTemplateDto);
     }
 
-    @Delete(':id')
-    @Roles('business_owner')
-    remove(@Param('id') id: string) {
-        return this.templatesService.remove(id);
-    }
+    // remove inherited from BaseController
 
     @Patch(':id/activate')
     @Roles('business_owner')

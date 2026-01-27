@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Put, Patch, Param, Delete, Query, UseGuards, ValidationPipe, UsePipes } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Patch, Param, Query, UseGuards, ValidationPipe, UsePipes } from '@nestjs/common';
 import { DisciplinesService } from './disciplines.service';
 import { CreateDisciplineDto } from './dto/create-discipline.dto';
 import { UpdateDisciplineDto } from './dto/update-discipline.dto';
@@ -7,11 +7,15 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { BaseController } from '../common/controllers/base.controller';
+import { Discipline } from './entities/discipline.entity';
 
 @Controller('disciplines')
 @UseGuards(JwtAuthGuard, RolesGuard) // Proteger todos los endpoints
-export class DisciplinesController {
-    constructor(private readonly disciplinesService: DisciplinesService) { }
+export class DisciplinesController extends BaseController<Discipline> {
+    constructor(private readonly disciplinesService: DisciplinesService) {
+        super(disciplinesService);
+    }
 
     @Post()
     @Roles('business_owner')
@@ -22,8 +26,8 @@ export class DisciplinesController {
     }
 
     @Get()
-    findAll(@Query('boxId') boxId: string, @Query() paginationDto: PaginationDto) {
-        return this.disciplinesService.findAll(boxId, paginationDto);
+    findAll(@Query() paginationDto: PaginationDto, @Query('boxId') boxId?: string) {
+        return this.disciplinesService.findAll(paginationDto, { boxId });
     }
 
     @Get(':id')
@@ -38,11 +42,7 @@ export class DisciplinesController {
         return this.disciplinesService.update(id, updateDisciplineDto);
     }
 
-    @Delete(':id')
-    @Roles('business_owner')
-    remove(@Param('id') id: string) {
-        return this.disciplinesService.remove(id);
-    }
+    // remove inherited from BaseController (allows admin + business_owner)
 
     @Patch(':id/activate')
     @Roles('business_owner')

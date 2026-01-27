@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { BaseService } from '../common/services/base.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, DataSource } from 'typeorm';
 import { WeekTemplate } from './entities/week-template.entity';
@@ -11,7 +12,8 @@ import { PaginationDto } from '../common/dtos/pagination.dto';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 
 @Injectable()
-export class TemplatesService {
+@Injectable()
+export class TemplatesService extends BaseService<WeekTemplate> {
     constructor(
         @InjectRepository(WeekTemplate)
         private readonly templateRepo: Repository<WeekTemplate>,
@@ -20,34 +22,14 @@ export class TemplatesService {
         @InjectRepository(Schedule)
         private readonly scheduleRepo: Repository<Schedule>,
         private readonly dataSource: DataSource,
-    ) { }
+    ) {
+        super(templateRepo, 'WeekTemplate');
+    }
 
     // --- CRUD Template ---
 
-    async findAll(boxId: string, paginationDto: PaginationDto): Promise<PaginatedResult<WeekTemplate>> {
-        const { page = 1, limit = 10 } = paginationDto;
-        const skip = (page - 1) * limit;
+    // findAll inherited from BaseService
 
-        const [items, totalItems] = await this.templateRepo.findAndCount({
-            where: { boxId },
-            order: { createdAt: 'DESC' },
-            skip,
-            take: limit
-        });
-
-        const totalPages = Math.ceil(totalItems / limit);
-
-        return {
-            items,
-            meta: {
-                totalItems,
-                itemCount: items.length,
-                itemsPerPage: limit,
-                totalPages,
-                currentPage: page
-            }
-        };
-    }
 
     async findOne(id: string): Promise<WeekTemplate> {
         const template = await this.templateRepo.findOne({
@@ -64,22 +46,7 @@ export class TemplatesService {
         return template;
     }
 
-    async create(dto: CreateTemplateDto): Promise<WeekTemplate> {
-        const tpl = this.templateRepo.create(dto);
-        return this.templateRepo.save(tpl);
-    }
-
-    async update(id: string, dto: UpdateTemplateDto): Promise<WeekTemplate> {
-        const tpl = await this.findOne(id);
-        Object.assign(tpl, dto);
-        return this.templateRepo.save(tpl);
-    }
-
-    async remove(id: string): Promise<void> {
-        // Cascade delete should handle items if configured in DB, 
-        // but explicit removal is safer if FK cascade is missing.
-        await this.templateRepo.delete(id);
-    }
+    // create, update, remove inherit from BaseService
 
     // --- CRUD Items ---
 
