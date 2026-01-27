@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query, Patch, UseInterceptors, ClassSerializerInterceptor } from '@nestjs/common';
 import { InvitationsService } from './invitations.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -10,6 +10,7 @@ import { PaginationDto } from '../common/dtos/pagination.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('invitations')
+@UseInterceptors(ClassSerializerInterceptor)
 export class InvitationsController {
     constructor(private readonly invitationsService: InvitationsService) { }
 

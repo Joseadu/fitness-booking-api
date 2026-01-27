@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Box } from '../../boxes/entities/box.entity';
 import { Profile } from '../../profiles/entities/profile.entity';
+import { Expose } from 'class-transformer';
 
 export enum InvitationStatus {
     PENDING = 'pending',
@@ -21,6 +22,7 @@ export class Invitation {
     box: Box;
 
     @Column('text')
+    @Expose({ name: 'invited_email' })
     email: string;
 
     // Optional: Link to user if they already exist (Path B) or after creation (Path A)

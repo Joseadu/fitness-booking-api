@@ -1,10 +1,11 @@
-import { Controller, Get, Put, Body, UseGuards, Request, Param } from '@nestjs/common';
+import { Controller, Get, Put, Body, UseGuards, Request, Param, UseInterceptors, ClassSerializerInterceptor } from '@nestjs/common';
 import { ProfilesService } from './profiles.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UpdateProfileDto } from '../athletes/dto/update-profile.dto';
 
-@Controller('profiles') // or 'users/me' if we want to keep backwards compat, but 'profiles' is cleaner
+@Controller('profiles')
 @UseGuards(JwtAuthGuard)
+@UseInterceptors(ClassSerializerInterceptor)
 export class ProfilesController {
     constructor(private readonly profilesService: ProfilesService) { }
 
