@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { WeekTemplate } from './week-template.entity';
 import { Discipline } from '../../disciplines/entities/discipline.entity';
-// import { User } from '../../users/entities/user.entity'; // Cuando exista UsersModule
+import { Profile } from '../../profiles/entities/profile.entity';
 
 @Entity('week_template_items')
 export class WeekTemplateItem {
@@ -25,10 +25,9 @@ export class WeekTemplateItem {
     @Column('uuid', { name: 'trainer_id', nullable: true })
     trainerId: string;
 
-    // TODO: Relation with Trainer/User
-    // @ManyToOne(() => User)
-    // @JoinColumn({ name: 'trainer_id' })
-    // trainer: User;
+    @ManyToOne(() => Profile)
+    @JoinColumn({ name: 'trainer_id' })
+    trainer: Profile;
 
     @Column('integer', { name: 'day_of_week' })
     dayOfWeek: number; // 1=Lunes, 7=Domingo

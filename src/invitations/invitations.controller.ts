@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Public } from '../auth/public.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '../auth/role.enum';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { PaginationDto } from '../common/dtos/pagination.dto';
 
@@ -16,7 +17,7 @@ export class InvitationsController {
 
     // POST /invitations
     @Post()
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER)
     create(
         @Body() body: CreateInvitationDto & { boxId: string },
         @CurrentUser() user
@@ -26,7 +27,7 @@ export class InvitationsController {
 
     // GET /invitations?boxId=...
     @Get()
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER)
     findAllByBox(
         @Query('boxId') boxId: string,
         @Query() pagination: PaginationDto,
@@ -39,7 +40,7 @@ export class InvitationsController {
 
     // DELETE /invitations/:id
     @Delete(':id')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER)
     remove(@Param('id') id: string, @CurrentUser() user) {
         return this.invitationsService.remove(id, user);
     }

@@ -6,6 +6,7 @@ import { ImportTemplateDto, ApplyTemplateDto } from './dto/template-actions.dto'
 import { PaginationDto } from '../common/dtos/pagination.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // Ajustar path auth
 import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '../auth/role.enum';
 import { RolesGuard } from '../auth/roles.guard';
 import { BaseController } from '../common/controllers/base.controller';
 import { WeekTemplate } from './entities/week-template.entity';
@@ -20,7 +21,7 @@ export class TemplatesController extends BaseController<WeekTemplate> {
     // --- Template CRUD ---
 
     @Post()
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER, UserRole.TRAINER)
     create(@Body() createTemplateDto: CreateTemplateDto) {
         return this.templatesService.create(createTemplateDto);
     }
@@ -33,7 +34,7 @@ export class TemplatesController extends BaseController<WeekTemplate> {
     // findOne inherited (uses service.findOne which handles relations)
 
     @Put(':id')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER, UserRole.TRAINER)
     update(@Param('id') id: string, @Body() updateTemplateDto: UpdateTemplateDto) {
         return this.templatesService.update(id, updateTemplateDto);
     }
@@ -41,13 +42,13 @@ export class TemplatesController extends BaseController<WeekTemplate> {
     // remove inherited from BaseController
 
     @Patch(':id/activate')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER, UserRole.TRAINER)
     activate(@Param('id') id: string) {
         return this.templatesService.update(id, { isActive: true });
     }
 
     @Patch(':id/deactivate')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER, UserRole.TRAINER)
     deactivate(@Param('id') id: string) {
         return this.templatesService.update(id, { isActive: false });
     }
@@ -55,13 +56,13 @@ export class TemplatesController extends BaseController<WeekTemplate> {
     // --- Logic Endpoints ---
 
     @Post('import-from-week')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER, UserRole.TRAINER)
     importFromWeek(@Body() dto: ImportTemplateDto) {
         return this.templatesService.importFromWeek(dto);
     }
 
     @Post(':id/apply')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER, UserRole.TRAINER)
     applyTemplate(@Param('id') id: string, @Body() dto: ApplyTemplateDto) {
         return this.templatesService.applyTemplate(id, dto);
     }
@@ -74,7 +75,7 @@ export class TemplatesController extends BaseController<WeekTemplate> {
     // --- Item CRUD (Nested) ---
 
     @Post(':id/items')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER, UserRole.TRAINER)
     addItem(@Param('id') id: string, @Body() dto: AddTemplateItemDto) {
         return this.templatesService.addItem(id, dto);
     }
@@ -88,7 +89,8 @@ export class TemplatesController extends BaseController<WeekTemplate> {
 // Using absolute paths for simplicity in one file.
 
 @Controller('week-template-items')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.OWNER, UserRole.TRAINER)
 export class TemplateItemsController {
     constructor(private readonly templatesService: TemplatesService) { }
 

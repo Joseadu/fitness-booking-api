@@ -5,6 +5,7 @@ import { UpdateDisciplineDto } from './dto/update-discipline.dto';
 import { PaginationDto } from '../common/dtos/pagination.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '../auth/role.enum';
 import { RolesGuard } from '../auth/roles.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { BaseController } from '../common/controllers/base.controller';
@@ -18,7 +19,7 @@ export class DisciplinesController extends BaseController<Discipline> {
     }
 
     @Post()
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER)
     @UsePipes(new ValidationPipe())
     create(@Body() createDisciplineDto: CreateDisciplineDto, @CurrentUser() user) {
         // TODO: Validate ownership via service (Phase 5.5 extension if needed, or rely on Box Owner role)
@@ -36,7 +37,7 @@ export class DisciplinesController extends BaseController<Discipline> {
     }
 
     @Put(':id')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER)
     @UsePipes(new ValidationPipe())
     update(@Param('id') id: string, @Body() updateDisciplineDto: UpdateDisciplineDto) {
         return this.disciplinesService.update(id, updateDisciplineDto);
@@ -45,13 +46,13 @@ export class DisciplinesController extends BaseController<Discipline> {
     // remove inherited from BaseController (allows admin + business_owner)
 
     @Patch(':id/activate')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER)
     activate(@Param('id') id: string) {
         return this.disciplinesService.update(id, { isActive: true });
     }
 
     @Patch(':id/deactivate')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER)
     deactivate(@Param('id') id: string) {
         return this.disciplinesService.update(id, { isActive: false });
     }

@@ -4,6 +4,7 @@ import { MembershipsService } from './memberships.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '../auth/role.enum';
 import { CurrentUser } from '../auth/current-user.decorator';
 
 @Controller('memberships')
@@ -27,20 +28,26 @@ export class MembershipsController {
         return this.membershipsService.create(user.userId, createMembershipDto);
     }
 
+    @Patch(':id')
+    @Roles(UserRole.OWNER)
+    async update(@Param('id') id: string, @Body() dto: any, @CurrentUser() user) {
+        return this.membershipsService.update(id, dto, user);
+    }
+
     @Patch(':id/deactivate')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER)
     async deactivate(@CurrentUser() user, @Param('id') id: string) {
         return this.membershipsService.deactivate(user.userId, id, user);
     }
 
     @Patch(':id/activate')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER)
     async activate(@CurrentUser() user, @Param('id') id: string) {
         return this.membershipsService.activate(user.userId, id, user);
     }
 
     @Delete(':id')
-    @Roles('business_owner')
+    @Roles(UserRole.OWNER)
     async remove(@CurrentUser() user, @Param('id') id: string) {
         return this.membershipsService.remove(user.userId, id, user);
     }

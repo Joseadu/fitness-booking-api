@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, Jo
 import { Box } from '../../boxes/entities/box.entity';
 import { Discipline } from '../../disciplines/entities/discipline.entity';
 import { Booking } from '../../bookings/entities/booking.entity';
+import { Profile } from '../../profiles/entities/profile.entity';
 import { Expose } from 'class-transformer';
 
 @Entity('schedules')
@@ -39,7 +40,9 @@ export class Schedule {
     @Column('uuid', { name: 'trainer_id', nullable: true })
     trainer_id: string;
 
-    // TODO: Relation with Trainer/User
+    @ManyToOne(() => Profile)
+    @JoinColumn({ name: 'trainer_id' })
+    trainer: Profile;
 
     @Column('integer', { name: 'max_capacity', default: 0 })
     max_capacity: number;

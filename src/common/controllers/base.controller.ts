@@ -5,6 +5,7 @@ import { PaginationDto } from '../dtos/pagination.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
+import { UserRole } from '../../auth/role.enum';
 
 // Note: We cannot rely on generics for Body DTOs easily in NestJS decorators without mixins.
 // For now, we accept any object and let the Service validate, or subclasses override methods with specific DTOs.
@@ -15,13 +16,13 @@ export abstract class BaseController<T extends BaseEntity> {
     constructor(private readonly service: BaseService<T>) { }
 
     @Get()
-    @Roles('admin', 'business_owner')
+    @Roles(UserRole.OWNER)
     findAll(@Query() paginationDto: PaginationDto) {
         return this.service.findAll(paginationDto);
     }
 
     @Get(':id')
-    @Roles('admin', 'business_owner')
+    @Roles(UserRole.OWNER)
     findOne(@Param('id') id: string) {
         return this.service.findOne(id);
     }
@@ -36,7 +37,7 @@ export abstract class BaseController<T extends BaseEntity> {
     // }
 
     @Delete(':id')
-    @Roles('admin', 'business_owner')
+    @Roles(UserRole.OWNER)
     remove(@Param('id') id: string) {
         return this.service.remove(id);
     }

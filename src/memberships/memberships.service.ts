@@ -168,4 +168,29 @@ export class MembershipsService {
 
         await this.membershipRepository.remove(membership);
     }
+    /**
+     * Find membership by ID
+     */
+    async findOne(membershipId: string): Promise<BoxMembership> {
+        const membership = await this.membershipRepository.findOne({
+            where: { id: membershipId },
+            relations: ['box', 'profile']
+        });
+
+        if (!membership) {
+            throw new NotFoundException(`Membership not found`);
+        }
+
+        return membership;
+    }
+    async update(membershipId: string, dto: any, user: any): Promise<BoxMembership> {
+        const membership = await this.findOne(membershipId);
+        this.verifyOwnership(membership.box_id, user);
+
+        if (dto.role) {
+            membership.role = dto.role;
+        }
+
+        return this.membershipRepository.save(membership);
+    }
 }
