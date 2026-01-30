@@ -33,7 +33,7 @@ export class SchedulesService {
 
         const schedules = await this.scheduleRepository.find({
             where,
-            relations: ['discipline', 'bookings', 'bookings.athlete'],
+            relations: ['discipline', 'trainer', 'bookings', 'bookings.athlete'],
             order: { date: 'ASC', start_time: 'ASC' },
         });
 
@@ -66,7 +66,7 @@ export class SchedulesService {
                     name: schedule.discipline?.name,
                     color: schedule.discipline?.color
                 },
-                coach: schedule.trainer_id ? { id: schedule.trainer_id, name: 'Coach' } : undefined,
+                coach: schedule.trainer ? { id: schedule.trainer.id, name: schedule.trainer.fullName } : undefined,
                 bookings: confirmedBookings.map(booking => ({
                     id: booking.athlete?.id,
                     full_name: booking.athlete?.fullName,
@@ -171,6 +171,8 @@ export class SchedulesService {
         this.verifyOwnership(schedule.box_id, user);
 
         // Actualizar campos permitidos
+        if (dto.discipline_id) schedule.discipline_id = dto.discipline_id;
+        if (dto.trainer_id !== undefined) schedule.trainer_id = dto.trainer_id; // Allow null to remove trainer
         if (dto.start_time) schedule.start_time = dto.start_time;
         if (dto.end_time) schedule.end_time = dto.end_time;
         if (dto.max_capacity) schedule.max_capacity = dto.max_capacity;
@@ -236,7 +238,7 @@ export class SchedulesService {
                 name: schedule.discipline.name,
                 color: schedule.discipline.color
             } : undefined,
-            coach: schedule.trainer_id ? { id: schedule.trainer_id, name: 'Coach' } : undefined,
+            coach: schedule.trainer ? { id: schedule.trainer.id, name: schedule.trainer.fullName } : undefined,
         };
     }
 
