@@ -226,7 +226,7 @@ export class SchedulesService {
     private mapScheduleResponse(schedule: any) {
         return {
             ...schedule,
-            isVisible: schedule.isVisible ?? schedule.is_visible ?? true,
+            is_visible: schedule.is_visible ?? schedule.is_visible ?? true,
             isCancelled: schedule.isCancelled ?? schedule.is_cancelled ?? false,
             maxCapacity: schedule.maxCapacity ?? schedule.max_capacity ?? 15,
             cancelReason: (schedule.cancellationReason ?? schedule.cancelReason) || undefined,
@@ -236,7 +236,7 @@ export class SchedulesService {
                 name: schedule.discipline.name,
                 color: schedule.discipline.color
             } : undefined,
-            coach: schedule.trainerId ? { id: schedule.trainerId, name: 'Coach' } : undefined,
+            coach: schedule.trainer_id ? { id: schedule.trainer_id, name: 'Coach' } : undefined,
         };
     }
 

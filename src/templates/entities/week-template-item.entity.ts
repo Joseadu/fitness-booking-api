@@ -16,14 +16,14 @@ export class WeekTemplateItem {
     template: WeekTemplate;
 
     @Column('uuid', { name: 'discipline_id' })
-    disciplineId: string;
+    discipline_id: string;
 
     @ManyToOne(() => Discipline)
     @JoinColumn({ name: 'discipline_id' })
     discipline: Discipline;
 
     @Column('uuid', { name: 'trainer_id', nullable: true })
-    trainerId: string;
+    trainer_id: string;
 
     @ManyToOne(() => Profile)
     @JoinColumn({ name: 'trainer_id' })
@@ -33,10 +33,10 @@ export class WeekTemplateItem {
     dayOfWeek: number; // 1=Lunes, 7=Domingo
 
     @Column('time', { name: 'start_time' })
-    startTime: string;
+    start_time: string;
 
     @Column('time', { name: 'end_time' })
-    endTime: string;
+    end_time: string;
 
     @Column('integer', { name: 'max_capacity', default: 15 })
     maxCapacity: number;

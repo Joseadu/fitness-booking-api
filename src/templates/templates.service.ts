@@ -38,7 +38,7 @@ export class TemplatesService extends BaseService<WeekTemplate> {
             order: {
                 items: {
                     dayOfWeek: 'ASC',
-                    startTime: 'ASC',
+                    start_time: 'ASC',
                 },
             },
         });
@@ -119,11 +119,11 @@ export class TemplatesService extends BaseService<WeekTemplate> {
 
                 return queryRunner.manager.create(WeekTemplateItem, {
                     templateId: savedTemplate.id,
-                    disciplineId: schedule.discipline_id,
-                    trainerId: schedule.trainer_id,
+                    discipline_id: schedule.discipline_id,
+                    trainer_id: schedule.trainer_id,
                     dayOfWeek,
-                    startTime: schedule.start_time,
-                    endTime: schedule.end_time,
+                    start_time: schedule.start_time,
+                    end_time: schedule.end_time,
                     maxCapacity: schedule.max_capacity,
                     name: schedule.name,
                     description: schedule.description,
@@ -171,9 +171,9 @@ export class TemplatesService extends BaseService<WeekTemplate> {
             const exists = await this.scheduleRepo.findOne({
                 where: {
                     box_id: template.boxId,
-                    discipline_id: item.disciplineId,
+                    discipline_id: item.discipline_id,
                     date: dateStr,
-                    start_time: item.startTime,
+                    start_time: item.start_time,
                     is_cancelled: false
                 }
             });
@@ -207,11 +207,11 @@ export class TemplatesService extends BaseService<WeekTemplate> {
 
             const schedule = {
                 box_id: template.boxId,
-                discipline_id: item.disciplineId,
-                trainer_id: item.trainerId,
+                discipline_id: item.discipline_id,
+                trainer_id: item.trainer_id,
                 date: dateStr,
-                start_time: item.startTime,
-                end_time: item.endTime,
+                start_time: item.start_time,
+                end_time: item.end_time,
                 // Asegurar capacidad por defecto
                 max_capacity: item.maxCapacity || 15,
 

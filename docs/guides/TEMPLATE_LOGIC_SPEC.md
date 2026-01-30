@@ -28,11 +28,11 @@ async applyTemplate(templateId: string, dto: ApplyTemplateDto): Promise<void> {
 
         const schedule = {
             boxId: template.boxId,
-            disciplineId: item.disciplineId, // Correcto según Entity
-            trainerId: item.trainerId, 
+            discipline_id: item.discipline_id, // Correcto según Entity
+            trainer_id: item.trainer_id, 
             date: dateStr,
-            startTime: item.startTime,
-            endTime: item.endTime,
+            start_time: item.start_time,
+            end_time: item.end_time,
             maxCapacity: item.maxCapacity, // Correcto según Entity
             
             // CAMPOS CRÍTICOS

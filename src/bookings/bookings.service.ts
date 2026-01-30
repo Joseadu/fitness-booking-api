@@ -115,8 +115,8 @@ export class BookingsService {
             return {
                 id: schedule.id,
                 date: schedule.date,
-                startTime: schedule.start_time,
-                endTime: schedule.end_time,
+                start_time: schedule.start_time,
+                end_time: schedule.end_time,
                 capacity: schedule.max_capacity,
                 currentBookings: 0,
                 spotsAvailable: 0,

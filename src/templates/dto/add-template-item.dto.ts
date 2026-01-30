@@ -3,11 +3,11 @@ import { IsString, IsNotEmpty, IsUUID, IsNumber, IsOptional, Matches, Min, Max }
 export class AddTemplateItemDto {
     @IsUUID()
     @IsNotEmpty()
-    disciplineId: string;
+    discipline_id: string;
 
     @IsUUID()
     @IsOptional()
-    trainerId?: string;
+    trainer_id?: string;
 
     @IsNumber()
     @Min(1)
@@ -17,12 +17,12 @@ export class AddTemplateItemDto {
     @IsString()
     @IsNotEmpty()
     @Matches(/^\d{2}:\d{2}$/, { message: 'Time must be HH:mm' })
-    startTime: string;
+    start_time: string;
 
     @IsString()
     @IsNotEmpty()
     @Matches(/^\d{2}:\d{2}$/, { message: 'Time must be HH:mm' })
-    endTime: string;
+    end_time: string;
 
     @IsNumber()
     @IsNotEmpty()

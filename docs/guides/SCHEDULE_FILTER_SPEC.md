@@ -52,7 +52,7 @@ async findAll(boxId: string, fromDate?: string, toDate?: string) {
     relations: ['discipline', 'coach', 'bookings'], // Asegurar relaciones
     order: {
       date: 'ASC',
-      startTime: 'ASC'
+      start_time: 'ASC'
     }
     // IMPORTANTE: Quitar 'take: 50' o límites fijos si existen
   });

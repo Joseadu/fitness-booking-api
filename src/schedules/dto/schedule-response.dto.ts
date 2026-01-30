@@ -1,8 +1,8 @@
 export class ScheduleResponseDto {
     id: string;
     date: string;       // "2024-01-01"
-    startTime: string;  // "10:00"
-    endTime: string;    // "11:00"
+    start_time: string;  // "10:00"
+    end_time: string;    // "11:00"
 
     capacity: number;
     currentBookings: number; // spots ocupados (confirmados)
