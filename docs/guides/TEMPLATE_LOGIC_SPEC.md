@@ -1,10 +1,10 @@
 # Especificación de Lógica de Plantillas (Backend) - FIX VERIFICADO
 
 > **Diagnóstico Verificado:**
-> 1. He revisado `schedules.service.ts`: El método `findAll` solo devuelve clases con **`isVisible: true`**.
-> 2. He revisado `schedule.entity.ts`: La columna `isVisible` existe.
-> 3. **Error anterior:** Al quitar `isVisible` del payload, las clases se creaban pero no se veían.
-> 4. **Solución:** Enviar explícitamente `isVisible: true`.
+> 1. He revisado `schedules.service.ts`: El método `findAll` solo devuelve clases con **`is_visible: true`**.
+> 2. He revisado `schedule.entity.ts`: La columna `is_visible` existe.
+> 3. **Error anterior:** Al quitar `is_visible` del payload, las clases se creaban pero no se veían.
+> 4. **Solución:** Enviar explícitamente `is_visible: true`.
 
 ## 3. Apply Template (CÓDIGO CORRECTO Y FINAL)
 
@@ -38,7 +38,7 @@ async applyTemplate(templateId: string, dto: ApplyTemplateDto): Promise<void> {
             // CAMPOS CRÍTICOS
             currentBookings: 0,
             isCancelled: false,
-            isVisible: true, // <--- IMPRESCINDIBLE: true para que findAll las devuelva
+            is_visible: true, // <--- IMPRESCINDIBLE: true para que findAll las devuelva
             
             name: item.name,
             description: item.description
