@@ -64,7 +64,9 @@ export class SchedulesService {
                 discipline: {
                     id: schedule.discipline?.id,
                     name: schedule.discipline?.name,
-                    color: schedule.discipline?.color
+                    color: schedule.discipline?.color,
+                    description: schedule.discipline?.description,
+                    video_url: schedule.discipline?.video_url
                 },
                 coach: schedule.trainer ? { id: schedule.trainer.id, name: schedule.trainer.fullName } : undefined,
                 bookings: confirmedBookings.map(booking => ({

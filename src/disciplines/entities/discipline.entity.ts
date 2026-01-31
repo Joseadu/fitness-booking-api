@@ -11,6 +11,8 @@ export class Discipline extends BaseEntity {
     color: string;
     @Column('text', { nullable: true })
     description: string;
+    @Column('text', { nullable: true, name: 'video_url' })
+    video_url: string;
     // --- CAMPOS FALTANTES QUE EL FRONTEND NECESITA ---
     @Column('integer', { name: 'duration_minutes', default: 60 })
     durationMinutes: number;
