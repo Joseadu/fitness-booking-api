@@ -96,7 +96,7 @@ export class BookingsService {
                 athleteId: userId,
                 status: 'confirmed'
             },
-            relations: ['schedule', 'schedule.discipline'], // Join con Schedule y Discipline
+            relations: ['schedule', 'schedule.discipline', 'schedule.trainer'], // Join con Schedule, Discipline y Trainer
             order: {
                 schedule: {
                     date: 'ASC',
@@ -129,7 +129,7 @@ export class BookingsService {
                     name: schedule.discipline?.name,
                     color: schedule.discipline?.color
                 },
-                coach: schedule.trainer_id ? { id: schedule.trainer_id, name: 'Coach' } : undefined,
+                coach: schedule.trainer ? { id: schedule.trainer.id, name: schedule.trainer.fullName } : undefined,
             };
         }).filter(item => item !== null); // Filtrar nulos
     }
