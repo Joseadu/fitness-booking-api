@@ -1,6 +1,7 @@
 import { ProfilesModule } from './profiles/profiles.module';
 import { MembershipsModule } from './memberships/memberships.module';
 import { InvitationsModule } from './invitations/invitations.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -32,8 +33,8 @@ import { AppService } from './app.service';
         type: 'postgres',
         url: configService.get('DATABASE_URL'),
         autoLoadEntities: true,
-        synchronize: false, // IMPORTANTE: Nunca sincronizar en migración para no dañar DB existente
-        ssl: { rejectUnauthorized: false }, // Supabase requiere SSL
+        synchronize: false,
+        ssl: { rejectUnauthorized: false },
       }),
     }),
     AuthModule,
@@ -47,6 +48,7 @@ import { AppService } from './app.service';
     ProfilesModule,
     MembershipsModule,
     InvitationsModule,
+    NotificationsModule,
     ThrottlerModule.forRoot([{
       ttl: 60000,
       limit: 100,
