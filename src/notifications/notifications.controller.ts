@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { NotificationsService } from './notifications.service';
@@ -13,6 +13,17 @@ export class NotificationsController {
         console.log('🔍 Current user:', user);
         console.log('🔍 User ID:', user?.userId);
         return this.notificationsService.getUnread(user.userId);
+    }
+
+    @Get('all')
+    getAllNotifications(
+        @CurrentUser() user: any,
+        @Query('limit') limit?: string,
+        @Query('offset') offset?: string,
+    ) {
+        const limitNum = limit ? parseInt(limit, 10) : 5;
+        const offsetNum = offset ? parseInt(offset, 10) : 0;
+        return this.notificationsService.getAll(user.userId, limitNum, offsetNum);
     }
 
     @Patch(':id/read')

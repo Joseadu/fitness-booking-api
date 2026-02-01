@@ -52,6 +52,17 @@ export class NotificationsService {
         });
     }
 
+    async getAll(userId: string, limit: number = 5, offset: number = 0): Promise<{ notifications: Notification[], total: number }> {
+        const [notifications, total] = await this.notificationRepo.findAndCount({
+            where: { userId },
+            order: { createdAt: 'DESC' },
+            take: limit,
+            skip: offset,
+        });
+
+        return { notifications, total };
+    }
+
     async getUserPreferences(userId: string): Promise<NotificationPreference> {
         let prefs = await this.preferenceRepo.findOne({ where: { userId } });
 
