@@ -121,17 +121,23 @@ export class NotificationsService {
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
 
-        // Note: We'll need to handle the case where user doesn't exist yet
-        // For now, we'll create the notification and it will be visible when they create account
+        // Handle both Setup (Path A) and Accept (Path B) flows
+        const actionUrl = invitation.token
+            ? `/setup-account?token=${invitation.token}`
+            : `/accept-invitation?id=${invitation.id}`;
+
+        const boxId = invitation.boxId || invitation.box_id;
+
+        // Note: user_id should already be set for both Path A and Path B
         await this.send({
-            userId: invitation.email, // Will be linked to user when they sign up
+            userId: invitation.user_id, // Use UUID instead of email
             type: NotificationType.INVITATION_RECEIVED,
             title: '📩 Invitación a Box',
             message: `${boxName} te ha invitado a unirte como ${role}`,
-            data: { invitationId: invitation.id, boxId: invitation.boxId, role: invitation.role },
+            data: { invitationId: invitation.id, boxId, role: invitation.role },
             channels: ['in_app'],
             priority: NotificationPriority.NORMAL,
-            actionUrl: `/invitations/accept?token=${invitation.token}`,
+            actionUrl,
             actionLabel: 'Aceptar invitación',
             expiresAt,
         });

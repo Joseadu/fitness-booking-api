@@ -54,16 +54,38 @@ export class InvitationsService {
 
     async create(boxId: string, createInvitationDto: CreateInvitationDto, user: any) {
         this.verifyOwnership(boxId, user);
-        const { email } = createInvitationDto;
+        // Fallback to invited_email if transformation didn't happen
+        const email = createInvitationDto.email || (createInvitationDto as any).invited_email;
+
+        if (!email) {
+            throw new BadRequestException('Email is required');
+        }
 
         let supabaseUserId: string | null = null;
         let isNewUser = false;
         let tempPassword = '';
 
         try {
-            // 1. Check if user exists in Supabase and get their ID
-            const { data: listData } = await this.supabaseAdmin.auth.admin.listUsers();
-            const existingUser = listData?.users?.find((u: any) => u.email === email);
+            // 1. Check if user exists (Robust method: Raw Query -> API Fallback)
+            let existingUser: any = null;
+            try {
+                // Try direct DB access first (fastest & scalable)
+                const users = await this.dataSource.query(
+                    'SELECT id, email FROM auth.users WHERE email = $1',
+                    [email]
+                );
+                if (users && users.length > 0) {
+                    existingUser = users[0];
+                }
+            } catch (err) {
+                this.logger.warn('Failed to query auth.users directly, falling back to Admin API', err);
+            }
+
+            // Fallback: Use Admin API
+            if (!existingUser) {
+                const { data: listData } = await this.supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+                existingUser = listData?.users?.find((u: any) => u.email === email);
+            }
 
             if (existingUser) {
                 // User exists → Check if already a member of THIS box
@@ -86,6 +108,10 @@ export class InvitationsService {
                 isNewUser = false;
                 supabaseUserId = existingUser.id;
                 this.logger.log(`[INVITATION] Classification: Path B (Existing User). Email: ${email}, ID: ${supabaseUserId}`);
+
+                if (!supabaseUserId) {
+                    throw new InternalServerErrorException('User found but has no ID');
+                }
 
                 return this.handlePathBInvitation(boxId, email, supabaseUserId);
             } else {
