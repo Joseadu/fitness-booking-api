@@ -5,12 +5,16 @@ import { Schedule } from './entities/schedule.entity';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { ScheduleResponseDto } from './dto/schedule-response.dto';
 import { Booking } from '../bookings/entities/booking.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class SchedulesService {
     constructor(
         @InjectRepository(Schedule)
         private scheduleRepository: Repository<Schedule>,
+        @InjectRepository(Booking)
+        private bookingRepository: Repository<Booking>,
+        private notificationsService: NotificationsService,
     ) { }
 
     async findAllByBox(boxId: string, userId: string, fromDate?: string, toDate?: string, includeDrafts: boolean = false): Promise<ScheduleResponseDto[]> {
@@ -191,11 +195,25 @@ export class SchedulesService {
     async cancel(ids: string[], reason: string, user: any) {
         if (!ids || ids.length === 0) return;
 
-        // Verify ownership for all affected schedules
-        const schedules = await this.scheduleRepository.find({ where: { id: In(ids) }, select: ['box_id'] });
-        // Check uniqueness of boxIds to optimize
-        const boxIds = [...new Set(schedules.map(s => s.box_id))];
-        boxIds.forEach(bid => this.verifyOwnership(bid, user));
+        // Verify ownership OR trainer role for all affected schedules
+        const schedules = await this.scheduleRepository.find({
+            where: { id: In(ids) },
+            relations: ['discipline', 'trainer', 'bookings', 'bookings.athlete']
+        });
+
+        for (const schedule of schedules) {
+            // Check if user is owner OR trainer of this class
+            const isOwner = user.memberships?.some(
+                (m: any) => m.boxId === schedule.box_id && m.role === 'business_owner'
+            );
+            const isTrainer = schedule.trainer_id === user.id;
+
+            if (!isOwner && !isTrainer) {
+                throw new ForbiddenException(
+                    'Only owners and trainers can cancel classes'
+                );
+            }
+        }
 
         // Bulk Update
         await this.scheduleRepository.update(
@@ -206,6 +224,24 @@ export class SchedulesService {
                 is_visible: false
             }
         );
+
+        // Send notifications to all users with active bookings
+        for (const schedule of schedules) {
+            const activeBookings = schedule.bookings?.filter(
+                (b) => b.status === 'confirmed'  // Fixed: was 'active', should be 'confirmed'
+            ) || [];
+
+            if (activeBookings.length > 0) {
+                await this.notificationsService.notifyClassCancelled(
+                    schedule.id,
+                    reason || 'No se especificó motivo',
+                    activeBookings.map(b => ({
+                        athleteId: b.athleteId,
+                        schedule: schedule
+                    }))
+                );
+            }
+        }
     }
 
     // REACTIVATE

@@ -17,8 +17,10 @@ export enum NotificationType {
     CLASS_REMINDER_24H = 'reminder_24h',
     CLASS_REMINDER_1H = 'reminder_1h',
     MEMBERSHIP_APPROVED = 'membership_approved',
+    MEMBERSHIP_SUSPENDED = 'membership_suspended',
     MEMBERSHIP_EXPIRING = 'membership_expiring',
     INVITATION_RECEIVED = 'invitation_received',
+    INVITATION_ACCEPTED = 'invitation_accepted',
 }
 
 export enum NotificationPriority {

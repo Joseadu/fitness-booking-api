@@ -13,6 +13,7 @@ import { Profile } from '../profiles/entities/profile.entity';
 import { BoxMembership } from '../memberships/entities/box-membership.entity';
 import { Box } from '../boxes/entities/box.entity';
 import { MembershipsService } from '../memberships/memberships.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class InvitationsService {
@@ -30,6 +31,7 @@ export class InvitationsService {
         @InjectRepository(Box)
         private boxRepository: Repository<Box>,
         private readonly membershipsService: MembershipsService,
+        private readonly notificationsService: NotificationsService,
         private dataSource: DataSource,
         private configService: ConfigService,
     ) {
@@ -212,6 +214,8 @@ export class InvitationsService {
         await queryRunner.connect();
         await queryRunner.startTransaction();
 
+        let membership: BoxMembership; // Declare outside try block
+
         try {
             // 1. Verificar si ya existe membership (idempotencia)
             const existingMembership = await queryRunner.manager.findOne(BoxMembership, {
@@ -252,7 +256,7 @@ export class InvitationsService {
 
             // 3. Crear Membresía via Service (Centralized logic)
             // Note: We use queryRunner to keep it in the same transaction
-            const membership = await this.membershipsService.create(invitation.user_id, {
+            membership = await this.membershipsService.create(invitation.user_id, {
                 boxId: invitation.box_id,
                 role: 'athlete',
                 membershipType: 'athlete'
@@ -261,27 +265,40 @@ export class InvitationsService {
             // 4. Commit
             await queryRunner.commitTransaction();
 
-            return {
-                success: true,
-                data: {
-                    membership: {
-                        id: membership.id,
-                        userId: membership.user_id,
-                        boxId: membership.box_id,
-                        role: membership.role,
-                        isActive: membership.is_active
-                    },
-                    alreadyExisted: false
-                },
-                message: 'Invitación aceptada correctamente. ¡Bienvenido al box!'
-            };
-
         } catch (err) {
             await queryRunner.rollbackTransaction();
             throw err;
         } finally {
             await queryRunner.release();
         }
+
+        // Send notification to box owner (after transaction completes)
+        try {
+            const invitationWithBox = await this.invitationRepository.findOne({
+                where: { id },
+                relations: ['box', 'profile']
+            });
+            if (invitationWithBox) {
+                await this.notificationsService.notifyInvitationAccepted(invitationWithBox);
+            }
+        } catch (error) {
+            this.logger.error('Failed to send invitation accepted notification', error);
+        }
+
+        return {
+            success: true,
+            data: {
+                membership: {
+                    id: membership.id,
+                    userId: membership.user_id,
+                    boxId: membership.box_id,
+                    role: membership.role,
+                    isActive: membership.is_active
+                },
+                alreadyExisted: false
+            },
+            message: 'Invitación aceptada correctamente. ¡Bienvenido al box!'
+        };
     }
 
     /**
@@ -407,6 +424,17 @@ export class InvitationsService {
         // Pass token to email service (isNewUser=true -> Setup Email)
         await this.sendInvitationEmail(email, true, boxName, savedInvitation.id, undefined, token);
 
+        // Send in-app notification (will be visible when user creates account)
+        try {
+            await this.notificationsService.notifyInvitationSent({
+                ...savedInvitation,
+                box: box
+            });
+        } catch (error) {
+            this.logger.error('Failed to send invitation notification', error);
+            // Don't fail the invitation if notification fails
+        }
+
         return {
             success: true,
             data: {
@@ -455,6 +483,16 @@ export class InvitationsService {
         const boxName = box?.name || 'un gimnasio';
 
         await this.sendInvitationEmail(email, false, boxName, savedInvitation.id);
+
+        // Send in-app notification
+        try {
+            await this.notificationsService.notifyInvitationSent({
+                ...savedInvitation,
+                box: box
+            });
+        } catch (error) {
+            this.logger.error('Failed to send invitation notification', error);
+        }
 
         return {
             success: true,

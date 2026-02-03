@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BoxMembership } from './entities/box-membership.entity';
 import { CreateMembershipDto } from './dto/create-membership.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 
 @Injectable()
@@ -10,6 +11,7 @@ export class MembershipsService {
     constructor(
         @InjectRepository(BoxMembership)
         private readonly membershipRepository: Repository<BoxMembership>,
+        private readonly notificationsService: NotificationsService,
     ) { }
 
     /**
@@ -78,6 +80,22 @@ export class MembershipsService {
 
         membership.is_active = false;
         await this.membershipRepository.save(membership);
+
+        // Send notification to athlete
+        try {
+            const membershipWithBox = await this.membershipRepository.findOne({
+                where: { id: membershipId },
+                relations: ['box']
+            });
+            if (membershipWithBox) {
+                await this.notificationsService.notifyMembershipStatusChanged(
+                    membershipWithBox,
+                    'inactive'
+                );
+            }
+        } catch (error) {
+            // Don't fail the operation if notification fails
+        }
     }
 
     async activate(userId: string, membershipId: string, user: any): Promise<void> {
@@ -93,6 +111,22 @@ export class MembershipsService {
 
         membership.is_active = true;
         await this.membershipRepository.save(membership);
+
+        // Send notification to athlete
+        try {
+            const membershipWithBox = await this.membershipRepository.findOne({
+                where: { id: membershipId },
+                relations: ['box']
+            });
+            if (membershipWithBox) {
+                await this.notificationsService.notifyMembershipStatusChanged(
+                    membershipWithBox,
+                    'active'
+                );
+            }
+        } catch (error) {
+            // Don't fail the operation if notification fails
+        }
     }
 
     async remove(userId: string, membershipId: string, user: any): Promise<void> {
