@@ -41,6 +41,11 @@ export class RolesGuard implements CanActivate {
         // O si implementamos que el usuario "actúa como" X al loguearse.
 
         const userRoles = user.roles || [user.role]; // Normalizar a array
+
+        console.log('[RolesGuard] Required roles:', requiredRoles);
+        console.log('[RolesGuard] User roles:', userRoles);
+        console.log('[RolesGuard] Access granted:', requiredRoles.some((role) => userRoles?.includes(role)));
+
         return requiredRoles.some((role) => userRoles?.includes(role));
     }
 }

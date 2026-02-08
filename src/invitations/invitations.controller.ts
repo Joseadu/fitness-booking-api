@@ -19,7 +19,7 @@ export class InvitationsController {
     @Post()
     @Roles(UserRole.OWNER)
     create(
-        @Body() body: CreateInvitationDto & { boxId: string },
+        @Body() body: CreateInvitationDto,
         @CurrentUser() user
     ) {
         return this.invitationsService.create(body.boxId, body, user);

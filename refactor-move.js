@@ -10,12 +10,12 @@ moves.forEach(({ from, to }) => {
     const targetDir = path.dirname(to);
     if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true });
-        console.log(`Created dir: ${targetDir}`);
+        // console.log(`Created dir: ${targetDir}`);
     }
     if (fs.existsSync(from)) {
         fs.renameSync(from, to);
-        console.log(`Moved ${from} -> ${to}`);
+        // console.log(`Moved ${from} -> ${to}`);
     } else {
-        console.log(`Source not found: ${from}`);
+        // console.log(`Source not found: ${from}`);
     }
 });

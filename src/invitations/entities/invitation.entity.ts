@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { Box } from '../../boxes/entities/box.entity';
 import { Profile } from '../../profiles/entities/profile.entity';
 import { Expose } from 'class-transformer';
+import { UserRole } from '../../auth/role.enum';
 
 export enum InvitationStatus {
     PENDING = 'pending',
@@ -35,6 +36,9 @@ export class Invitation {
 
     @Column('text', { default: InvitationStatus.PENDING })
     status: InvitationStatus;
+
+    @Column({ type: 'text', default: UserRole.ATHLETE })
+    role: string;
 
     @Column({ type: 'uuid', nullable: true, unique: true })
     token: string | null;

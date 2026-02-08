@@ -198,7 +198,7 @@ export class SchedulesService {
         // Verify ownership OR trainer role for all affected schedules
         const schedules = await this.scheduleRepository.find({
             where: { id: In(ids) },
-            relations: ['discipline', 'trainer', 'bookings', 'bookings.athlete']
+            relations: ['discipline', 'trainer', 'bookings', 'bookings.athlete', 'box']
         });
 
         for (const schedule of schedules) {

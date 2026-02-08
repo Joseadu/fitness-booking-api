@@ -94,11 +94,12 @@ export class NotificationsService {
             const date = new Date(schedule.date).toLocaleDateString('es-ES');
             const time = schedule.start_time?.substring(0, 5);
             const disciplineName = schedule.discipline?.name || 'la clase';
+            const boxName = schedule.box?.name || 'tu box';
 
             await this.send({
                 userId: booking.athleteId,
                 type: NotificationType.CLASS_CANCELLED,
-                title: '⚠️ Clase Cancelada',
+                title: `⚠️ Clase Cancelada en ${boxName}`,
                 message: `La clase de ${disciplineName} del ${date} a las ${time} ha sido cancelada. Motivo: ${reason}`,
                 data: { scheduleId, reason, date, time },
                 channels: ['in_app'],

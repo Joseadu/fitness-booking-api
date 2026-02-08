@@ -14,6 +14,7 @@ import { BoxMembership } from '../memberships/entities/box-membership.entity';
 import { Box } from '../boxes/entities/box.entity';
 import { MembershipsService } from '../memberships/memberships.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { UserRole } from '../auth/role.enum';
 
 @Injectable()
 export class InvitationsService {
@@ -53,9 +54,11 @@ export class InvitationsService {
     }
 
     async create(boxId: string, createInvitationDto: CreateInvitationDto, user: any) {
+        this.logger.warn(`[DEBUG] Received DTO: ${JSON.stringify(createInvitationDto)}`);
         this.verifyOwnership(boxId, user);
         // Fallback to invited_email if transformation didn't happen
         const email = createInvitationDto.email || (createInvitationDto as any).invited_email;
+        const role = createInvitationDto.role || UserRole.ATHLETE;
 
         if (!email) {
             throw new BadRequestException('Email is required');
@@ -98,9 +101,8 @@ export class InvitationsService {
 
                 if (existingMembership) {
                     throw new BadRequestException({
-                        statusCode: 400,
-                        error: InvitationErrorCode.ALREADY_MEMBER,
-                        message: 'El usuario ya es miembro de este box.'
+                        message: 'This user is already a member of your box',
+                        code: 'ALREADY_MEMBER'
                     });
                 }
 
@@ -113,11 +115,11 @@ export class InvitationsService {
                     throw new InternalServerErrorException('User found but has no ID');
                 }
 
-                return this.handlePathBInvitation(boxId, email, supabaseUserId);
+                return this.handlePathBInvitation(boxId, email, supabaseUserId, role);
             } else {
                 // User doesn't exist → Path A (New User - Setup Flow)
                 this.logger.log(`[INVITATION] Classification: Path A (New User). Email: ${email}`);
-                return this.handlePathAInvitation(boxId, email);
+                return this.handlePathAInvitation(boxId, email, role);
             }
 
         } catch (error) {
@@ -284,8 +286,8 @@ export class InvitationsService {
             // Note: We use queryRunner to keep it in the same transaction
             membership = await this.membershipsService.create(invitation.user_id, {
                 boxId: invitation.box_id,
-                role: 'athlete',
-                membershipType: 'athlete'
+                role: invitation.role, // Use role from invitation
+                membershipType: 'athlete' // membershipType is subscription type, not user role
             }, queryRunner);
 
             // 4. Commit
@@ -398,55 +400,62 @@ export class InvitationsService {
     /**
      * Handle Path A: New User (Setup Flow with Token)
      */
-    private async handlePathAInvitation(boxId: string, email: string) {
-        this.logger.log(`Handling Path A (New User) for ${email} in box ${boxId}`);
-        // 1. Generate random password for Supabase (user will overwrite it later)
-        const randomPassword = crypto.randomBytes(16).toString('hex');
-        const token = crypto.randomUUID(); // Setup Token for verification
+    private async handlePathAInvitation(boxId: string, email: string, role: string = UserRole.ATHLETE) {
+        this.logger.log(`Handling Path A (New User) for ${email} in box ${boxId} with role ${role}`);
 
-        // 2. Create User in Supabase
-        const { data: newUser, error: createError } = await this.supabaseAdmin.auth.admin.createUser({
-            email: email,
-            password: randomPassword,
-            email_confirm: true,
-            user_metadata: { mustChangePassword: true, role: 'athlete' }
-        });
+        let userId: string;
+        let token: string;
 
-        if (createError) {
-            this.logger.error(`Error creating user in Supabase for ${email}`, createError);
-            throw createError;
+        // Implementation detail: generate a random token for our internal invitation validation
+        token = crypto.randomBytes(32).toString('hex');
+
+        try {
+            // 1. Create User in Supabase (Metadata stores the role!)
+            // This is crucial: if user confirms via email link (not this flow), Supabase trigger needs to know the role.
+            const { data, error } = await this.supabaseAdmin.auth.admin.createUser({
+                email: email,
+                email_confirm: true, // We will handle password setup manually via our flow
+                user_metadata: {
+                    invited_by_box: boxId,
+                    role: role // Store role in metadata
+                }
+            });
+
+            if (error) throw error;
+            userId = data.user.id;
+            this.logger.log(`Created Supabase user ${userId}`);
+
+        } catch (error) {
+            this.logger.error(`Error creating user in Supabase for ${email}`, error);
+            // Handle error if user already exists but wasn't found in step 1...
+            // Re-throw for now
+            throw error;
         }
 
-        if (!newUser.user) {
-            this.logger.error(`User created but no user object returned for ${email}`);
-            throw new InternalServerErrorException('User created but no user object returned');
-        }
-
-        const supabaseUserId = newUser.user.id;
-        this.logger.log(`Created Supabase user ${supabaseUserId}`);
-
-        // 3. Create Local Profile
+        // 2. Create Local Profile
         const emailUsername = email.split('@')[0];
         const profile = this.profileRepository.create({
-            id: supabaseUserId,
+            id: userId,
             fullName: emailUsername,
         });
         await this.profileRepository.save(profile);
 
-        // 4. Create Invitation with Token
+        // 3. Create Invitation Record
         const invitation = this.invitationRepository.create({
-            box: { id: boxId } as Box,
-            email,
-            user_id: supabaseUserId,
+            box_id: boxId,
+            email: email,
+            user_id: userId,
             status: InvitationStatus.PENDING,
-            token: token
+            token: token, // Store token for validation
+            role: role // Save role in DB
         });
+
         const savedInvitation = await this.invitationRepository.save(invitation);
 
-        // 5. Send Setup Email (with Token Link)
         const box = await this.boxRepository.findOne({ where: { id: boxId } });
         const boxName = box?.name || 'un gimnasio';
 
+        // 4. Send Setup Email (with Token Link)
         // Pass token to email service (isNewUser=true -> Setup Email)
         await this.sendInvitationEmail(email, true, boxName, savedInvitation.id, undefined, token);
 
@@ -454,7 +463,8 @@ export class InvitationsService {
         try {
             await this.notificationsService.notifyInvitationSent({
                 ...savedInvitation,
-                box: box
+                box: box,
+                role: role // Explicitly pass role
             });
         } catch (error) {
             this.logger.error('Failed to send invitation notification', error);
@@ -481,7 +491,7 @@ export class InvitationsService {
     /**
      * Handle Path B: Existing User (Standard Link Flow)
      */
-    private async handlePathBInvitation(boxId: string, email: string, userId: string) {
+    private async handlePathBInvitation(boxId: string, email: string, userId: string, role: string = UserRole.ATHLETE) {
         // 1. Check for existing pending invitation
         const existingInvite = await this.invitationRepository.findOne({
             where: { email, box_id: boxId, status: InvitationStatus.PENDING }
@@ -500,7 +510,8 @@ export class InvitationsService {
             box_id: boxId,
             email: email,
             user_id: userId,
-            status: InvitationStatus.PENDING
+            status: InvitationStatus.PENDING,
+            role: role // Save role
         });
         const savedInvitation = await this.invitationRepository.save(invitation);
 
@@ -514,7 +525,8 @@ export class InvitationsService {
         try {
             await this.notificationsService.notifyInvitationSent({
                 ...savedInvitation,
-                box: box
+                box: box,
+                role: role // Explicitly pass role
             });
         } catch (error) {
             this.logger.error('Failed to send invitation notification', error);
@@ -591,8 +603,8 @@ export class InvitationsService {
         // 3. Auto-Accept Invitation (Create Membership)
         await this.membershipsService.create(invitation.user_id, {
             boxId: invitation.box_id,
-            role: 'athlete',
-            membershipType: 'athlete'
+            role: invitation.role, // Use role from invitation
+            membershipType: 'athlete' // membershipType is subscription type, not user role
         });
 
         // 4. Mark Invitation as Accepted & Invalidate Token
