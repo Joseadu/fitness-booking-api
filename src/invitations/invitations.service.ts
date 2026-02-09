@@ -407,7 +407,7 @@ export class InvitationsService {
         let token: string;
 
         // Implementation detail: generate a random token for our internal invitation validation
-        token = crypto.randomBytes(32).toString('hex');
+        token = crypto.randomUUID();
 
         try {
             // 1. Create User in Supabase (Metadata stores the role!)
