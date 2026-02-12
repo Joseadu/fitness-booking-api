@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, UseGuards, Request, Delete, Param, Put, UseInterceptors, ClassSerializerInterceptor } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards, Request, Delete, Param, Put, Patch, UseInterceptors, ClassSerializerInterceptor } from '@nestjs/common';
 import { SchedulesService } from './schedules.service';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -60,7 +60,7 @@ export class SchedulesController {
     }
 
     // UPDATE (Para guardar cambios. También para publicar una clase o muchas seleccionadas de una programación)
-    @Put(':id')
+    @Patch(':id')
     @Roles(UserRole.OWNER, UserRole.TRAINER)
     update(@Param('id') id: string, @Body() updateDto: any, @CurrentUser() user) {
         return this.schedulesService.update(id, updateDto, user);

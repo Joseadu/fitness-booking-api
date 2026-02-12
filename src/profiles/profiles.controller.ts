@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, UseGuards, Request, Param, UseInterceptors, ClassSerializerInterceptor } from '@nestjs/common';
+import { Controller, Get, Put, Patch, Body, UseGuards, Request, Param, UseInterceptors, ClassSerializerInterceptor } from '@nestjs/common';
 import { ProfilesService } from './profiles.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UpdateProfileDto } from '../athletes/dto/update-profile.dto';
@@ -19,7 +19,7 @@ export class ProfilesController {
         return this.profilesService.findOne(id);
     }
 
-    @Put('me')
+    @Patch('me')
     updateProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
         return this.profilesService.update(req.user.userId, updateProfileDto);
     }

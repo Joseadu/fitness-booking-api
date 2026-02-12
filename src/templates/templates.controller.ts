@@ -33,7 +33,7 @@ export class TemplatesController extends BaseController<WeekTemplate> {
 
     // findOne inherited (uses service.findOne which handles relations)
 
-    @Put(':id')
+    @Patch(':id')
     @Roles(UserRole.OWNER, UserRole.TRAINER)
     update(@Param('id') id: string, @Body() updateTemplateDto: UpdateTemplateDto) {
         return this.templatesService.update(id, updateTemplateDto);
@@ -94,7 +94,7 @@ export class TemplatesController extends BaseController<WeekTemplate> {
 export class TemplateItemsController {
     constructor(private readonly templatesService: TemplatesService) { }
 
-    @Put(':id')
+    @Patch(':id')
     updateItem(@Param('id') id: string, @Body() dto: Partial<AddTemplateItemDto>) {
         return this.templatesService.updateItem(id, dto);
     }

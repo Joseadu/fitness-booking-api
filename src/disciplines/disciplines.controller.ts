@@ -36,7 +36,7 @@ export class DisciplinesController extends BaseController<Discipline> {
         return this.disciplinesService.findOne(id);
     }
 
-    @Put(':id')
+    @Patch(':id')
     @Roles(UserRole.OWNER)
     @UsePipes(new ValidationPipe())
     update(@Param('id') id: string, @Body() updateDisciplineDto: UpdateDisciplineDto) {
